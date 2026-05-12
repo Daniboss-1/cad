@@ -23,6 +23,13 @@ export interface SphereParams {
   segments?: number;
 }
 
+export interface TorusParams {
+  radius: number;
+  tube: number;
+  radialSegments?: number;
+  tubularSegments?: number;
+}
+
 export interface MeshData {
   numVert: number;
   numTri: number;
@@ -58,6 +65,12 @@ export async function createSphere(params: SphereParams): Promise<ManifoldInstan
   const Manifold = await ensureManifold();
   const { radius, segments } = params;
   return Manifold.sphere(radius, segments);
+}
+
+export async function createTorus(params: TorusParams): Promise<ManifoldInstance> {
+  const Manifold = await ensureManifold();
+  const { radius, tube, radialSegments, tubularSegments } = params;
+  return Manifold.torus(radius, tube, radialSegments, tubularSegments);
 }
 
 export async function union(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {

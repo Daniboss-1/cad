@@ -1,10 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import * as THREE from 'three';
-import { createBox, createSphere, difference, getMeshData, deleteMesh, MeshData } from '@/lib/cad';
+import { 
+  createBox, 
+  createSphere, 
+  createCylinder, 
+  createTorus, 
+  union, 
+  getMeshData, 
+  MeshData 
+} from '@/lib/cad';
 import { meshToBufferGeometry } from '@/lib/mesh-utils';
+import { useStore } from '@/lib/store';
+import Sidebar from '@/components/Sidebar';
+import CommandK from '@/components/CommandK';
 
 const Viewport = dynamic(() => import('@/components/Viewport'), {
   ssr: false,
@@ -30,39 +41,84 @@ export default function Home() {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Initializing...');
+  const nodes = useStore((state) => state.nodes);
+
+  const rebuildGeometry = useCallback(async () => {
+    if (nodes.length === 0) {
+      setGeometry(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setStatus('Rebuilding geometry...');
+
+    const manifoldsToDelete: any[] = [];
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let finalResult: any = null;
+
+      for (const node of nodes) {
+        if (!node.visible) continue;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let currentManifold: any = null;
+        switch (node.type) {
+          case 'Box':
+            currentManifold = await createBox(node.params as any);
+            break;
+          case 'Sphere':
+            currentManifold = await createSphere(node.params as any);
+            break;
+          case 'Cylinder':
+            currentManifold = await createCylinder(node.params as any);
+            break;
+          case 'Torus':
+            currentManifold = await createTorus(node.params as any);
+            break;
+        }
+
+        if (currentManifold) {
+          if (!finalResult) {
+            finalResult = currentManifold;
+          } else {
+            const previousResult = finalResult;
+            finalResult = await union(previousResult, currentManifold);
+            manifoldsToDelete.push(previousResult);
+            manifoldsToDelete.push(currentManifold);
+          }
+        }
+      }
+
+      if (finalResult) {
+        const meshData: MeshData = await getMeshData(finalResult);
+        const bufferGeometry = meshToBufferGeometry(meshData);
+        setGeometry(bufferGeometry);
+        manifoldsToDelete.push(finalResult);
+      } else {
+        setGeometry(null);
+      }
+    } catch (err) {
+      console.error('Failed to rebuild geometry:', err);
+      setStatus(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      // Clean up all manifolds
+      for (const m of manifoldsToDelete) {
+        try {
+          if (m && typeof m.delete === 'function') {
+            m.delete();
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      setLoading(false);
+    }
+  }, [nodes]);
 
   useEffect(() => {
-    const createDemoGeometry = async () => {
-      try {
-        setStatus('Creating box primitive...');
-        const box = await createBox({ width: 2, height: 2, depth: 2, center: true });
-
-        setStatus('Creating sphere primitive...');
-        const sphere = await createSphere({ radius: 1.2, segments: 32 });
-
-        setStatus('Performing boolean difference operation...');
-        const result = await difference(box, sphere);
-
-        setStatus('Extracting mesh data...');
-        const meshData: MeshData = await getMeshData(result);
-
-        setStatus('Converting to Three.js geometry...');
-        const bufferGeometry = meshToBufferGeometry(meshData);
-
-        setGeometry(bufferGeometry);
-        setLoading(false);
-
-        box.delete();
-        sphere.delete();
-        result.delete();
-      } catch (err) {
-        console.error('Failed to create geometry:', err);
-        setStatus(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    };
-
-    createDemoGeometry();
-  }, []);
+    rebuildGeometry();
+  }, [rebuildGeometry]);
 
   return (
     <main
@@ -71,6 +127,7 @@ export default function Home() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
+        background: '#1a1a2e',
       }}
     >
       <header
@@ -86,21 +143,28 @@ export default function Home() {
           fontSize: '14px',
           fontWeight: 500,
           gap: '20px',
+          zIndex: 10,
         }}
       >
-        <span style={{ color: '#4a90d9' }}>CAD</span>
+        <span style={{ color: '#4a90d9', fontWeight: 'bold' }}>Aether CAD</span>
         <span style={{ opacity: 0.6 }}>|</span>
-        <span>Box - Sphere Difference Demo</span>
+        <span style={{ fontSize: '12px', opacity: 0.8 }}>Phase 0</span>
         {loading && (
           <>
             <span style={{ opacity: 0.6 }}>|</span>
-            <span style={{ color: '#ffd700' }}>{status}</span>
+            <span style={{ color: '#4a90d9' }}>{status}</span>
           </>
         )}
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: '12px', opacity: 0.5 }}>Press Cmd+K to add primitives</span>
       </header>
-      <div style={{ flex: 1, position: 'relative' }}>
-        <Viewport geometry={geometry} />
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Viewport geometry={geometry} />
+        </div>
+        <Sidebar />
       </div>
+      <CommandK />
     </main>
   );
 }
