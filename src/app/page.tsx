@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import * as THREE from 'three';
-import { createBox, createSphere, difference, getMeshData, deleteMesh } from '@/lib/cad';
+import { createBox, createSphere, difference, getMeshData, deleteMesh, MeshData } from '@/lib/cad';
 import { meshToBufferGeometry } from '@/lib/mesh-utils';
 
 const Viewport = dynamic(() => import('@/components/Viewport'), {
@@ -44,7 +44,7 @@ export default function Home() {
         const result = await difference(box, sphere);
 
         setStatus('Extracting mesh data...');
-        const meshData = await getMeshData(result);
+        const meshData: MeshData = await getMeshData(result);
 
         setStatus('Converting to Three.js geometry...');
         const bufferGeometry = meshToBufferGeometry(meshData);

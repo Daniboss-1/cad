@@ -1,7 +1,15 @@
 import * as THREE from 'three';
-import { MeshOutput } from './manifold';
 
-export function meshToBufferGeometry(mesh: MeshOutput): THREE.BufferGeometry {
+export interface MeshData {
+  numVert: number;
+  numTri: number;
+  vertPos: Float32Array;
+  vertNorm: Float32Array;
+  vertUV: Float32Array;
+  triVerts: Uint32Array;
+}
+
+export function meshToBufferGeometry(mesh: MeshData): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
 
   geometry.setAttribute(
