@@ -110,28 +110,26 @@ export default function BOMPanel() {
   const totalWeight = bomItems.reduce((acc, item) => acc + parseFloat(item.weight), 0);
 
   return (
-    <motion.div 
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      style={{
-      position: 'absolute',
-      bottom: '20px',
-      left: '20px',
-      width: '400px',
-      background: 'rgba(22, 27, 34, 0.9)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(240, 246, 252, 0.1)',
-      borderRadius: '12px',
-      padding: '16px',
-      color: '#c9d1d9',
-      fontFamily: 'monospace',
-      fontSize: '11px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-      zIndex: 5,
-      maxHeight: '400px',
-      overflowY: 'auto'
+    <motion.div
+    initial={{ x: -100, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    className="glassmorphism animate-luxury"
+    style={{
+    position: 'absolute',
+    bottom: '20px',
+    left: '20px',
+    width: '400px',
+    borderRadius: '12px',
+    padding: '16px',
+    color: '#c9d1d9',
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+    zIndex: 5,
+    maxHeight: '400px',
+    overflowY: 'auto'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #30363d', paddingBottom: '8px', alignItems: 'center' }}>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRefreshing ? '#d29922' : '#3fb950', animation: isRefreshing ? 'pulse 1s infinite' : 'none' }} />
           <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '0.5px' }}>SUPPLY-CHAIN SENTINEL</span>
@@ -164,10 +162,15 @@ export default function BOMPanel() {
                 </td>
                 <td style={{ color: '#8b949e' }}>{item.vendor}</td>
                 <td>
-                  <div style={{ color: item.leadTime === 'Stock' || item.leadTime === '2 days' ? '#3fb950' : '#d29922' }}>{item.leadTime}</div>
+                  <div style={{ color: item.leadTime === 'Stock' || item.leadTime === '2 days' ? '#3fb950' : '#d29922' }}>
+                  {item.leadTime}
+                  {parseFloat(item.leadTime) > 3 && (
+                  <span style={{ marginLeft: '4px', color: '#f85149', fontSize: '8px' }}>⚠️ DELAY RISK</span>
+                  )}
+                  </div>
                   {item.stock !== undefined && <div style={{ fontSize: '9px', opacity: 0.6 }}>{item.stock} in stock</div>}
-                </td>
-                <td style={{ textAlign: 'right', color: '#3fb950', fontWeight: 'bold' }}>${item.cost}</td>
+                  </td>
+
               </motion.tr>
             ))}
           </AnimatePresence>

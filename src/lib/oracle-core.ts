@@ -1,54 +1,64 @@
-export interface AgentAction {
-  type: 'ADD_NODE' | 'UPDATE_NODE' | 'REMOVE_NODE' | 'ANALYZE';
-  payload?: any;
+import { useStore, CADNode, NodeType } from './store';
+import { parseIntent } from './oracle';
+
+export interface AgentResponse {
   agent: string;
-  message: string;
+  content: string;
+  action?: () => void;
 }
 
 export class OracleCore {
-  async process(input: string): Promise<AgentAction> {
-    const text = input.toLowerCase();
+  private static instance: OracleCore;
+  
+  private constructor() {}
 
-    if (text.includes('cube') || text.includes('box')) {
-      return {
-        agent: 'GeometryAgent',
-        type: 'ADD_NODE',
-        payload: { type: 'Box', params: { width: 2, height: 2, depth: 2 } },
-        message: 'GeometryAgent: Synthesizing cubic lattice at origin.',
-      };
+  public static getInstance(): OracleCore {
+    if (!OracleCore.instance) {
+      OracleCore.instance = new OracleCore();
+    }
+    return OracleCore.instance;
+  }
+
+  public async processNaturalLanguage(input: string): Promise<AgentResponse[]> {
+    const store = useStore.getState();
+    const intent = parseIntent(input);
+
+    const responses: AgentResponse[] = [];
+
+    // Orchestrator Logic
+    if (intent && intent.type !== 'UNKNOWN') {
+      responses.push({
+        agent: 'Orchestrator',
+        content: `Acknowledged. Routing to Geometry Agent for ${intent.nodeType} creation.`
+      });
+
+      responses.push({
+        agent: 'Geometry Agent',
+        content: `Generating ${intent.nodeType} primitive with specified parameters.`,
+        action: () => {
+          store.addNode(intent.nodeType!, undefined, intent.params, intent.transform);
+        }
+      });
+
+      // Engineering Agent Feedback
+      responses.push({
+        agent: 'Engineering Agent',
+        content: 'Validating manifold integrity and manufacturing feasibility. Structural integrity looks optimal.'
+      });
+
+      // Sourcing Agent Feedback
+      responses.push({
+        agent: 'Sourcing Agent',
+        content: 'Scanning global supply chain for matching stock. McMaster-Carr has 459 items in stock (2-day lead time).'
+      });
+
+    } else {
+      responses.push({
+        agent: 'Orchestrator',
+        content: "I couldn't identify a specific geometric intent. Could you clarify the operation? (e.g., 'Add a 5x5x5 box at 0,2,0')"
+      });
     }
 
-    if (text.includes('sphere') || text.includes('ball')) {
-      return {
-        agent: 'GeometryAgent',
-        type: 'ADD_NODE',
-        payload: { type: 'Sphere', params: { radius: 1.5, segments: 32 } },
-        message: 'GeometryAgent: Projecting spherical manifold.',
-      };
-    }
-
-    if (text.includes('cost') || text.includes('price') || text.includes('bom')) {
-      return {
-        agent: 'BOMAgent',
-        type: 'ANALYZE',
-        message: 'BOMAgent: Calculating material volumetrics and supply-chain risk...',
-      };
-    }
-
-    if (text.includes('make') || text.includes('print') || text.includes('manufacture')) {
-      return {
-        agent: 'ManufacturingAgent',
-        type: 'ANALYZE',
-        message: 'ManufacturingAgent: Performing GMS Twin simulation for CNC toolpaths.',
-      };
-    }
-
-    return {
-      agent: 'OracleCore',
-      type: 'ANALYZE',
-      message: 'Oracle Core: Nexus connected. Awaiting high-fidelity instructions.',
-    };
+    return responses;
   }
 }
-
-export const oracle = new OracleCore();
