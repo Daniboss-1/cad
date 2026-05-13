@@ -16,14 +16,14 @@ import {
   scale,
   getMeshData, 
   MeshData 
-} from '@/lib/cad';
-import { meshToBufferGeometry } from '@/lib/mesh-utils';
-import { useStore, CADNode } from '@/lib/store';
-import Sidebar from '@/components/Sidebar';
-import CommandK from '@/components/CommandK';
-import BOMPanel from '@/components/BOMPanel';
+} from '@/shared/lib/cad';
+import { meshToBufferGeometry } from '@/shared/lib/mesh-utils';
+import { useStore, CADNode } from '@/shared/lib/store';
+import Sidebar from '@/widgets/sidebar/Sidebar';
+import CommandK from '@/features/command-k/CommandK';
+import BOMPanel from '@/widgets/bom/BOMPanel';
 
-const Viewport = dynamic(() => import('@/components/Viewport'), {
+const Viewport = dynamic(() => import('@/entities/geometry/Viewport'), {
   ssr: false,
   loading: () => (
     <div

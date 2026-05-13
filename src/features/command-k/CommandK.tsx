@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore, NodeType } from '@/lib/store';
+import { useStore, NodeType } from '@/shared/lib/store';
 
 export default function CommandK() {
   const [open, setOpen] = useState(false);

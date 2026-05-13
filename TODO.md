@@ -1,0 +1,112 @@
+# Aether CAD: Master 100-Task Manifest
+
+## Phase I: The Bedrock (Tasks 1-20)
+- [ ] **Task 1**: [src/] Initialize Feature-Sliced Design (FSD) directory structure (`shared`, `entities`, `features`, `widgets`, `pages`). | *Complexity: 2* | Success: Repo compiles with new structure.
+- [ ] **Task 2**: [src/shared/lib/manifold] Implement Manifold-3D Singleton for WASM initialization. | *Complexity: 3* | Success: Manifold instance accessible via static method.
+- [ ] **Task 3**: [src/shared/lib/manifold] Implement `ManifoldRegistry` for tracking and auto-deleting WASM meshes. | *Complexity: 5* | Success: No memory leaks after 100 rapid rebuilds.
+- [ ] **Task 4**: [src/entities/geometry] Refactor `Viewport` into a dedicated Entity with internal Three.js state management. | *Complexity: 4* | Success: Viewport renders correctly from new location.
+- [ ] **Task 5**: [src/features/command-k] Move `CommandK` to Features and refactor with Headless UI for accessibility. | *Complexity: 3* | Success: Command-K opens and filters correctly.
+- [ ] **Task 6**: [src/widgets/sidebar] Refactor `Sidebar` to use atomic components from `shared/ui`. | *Complexity: 3* | Success: UI remains visually consistent.
+- [ ] **Task 7**: [src/shared/store] Migrate Zustand store to use `immer` for immutable state updates in the history tree. | *Complexity: 4* | Success: State updates are traceable and immutable.
+- [ ] **Task 8**: [src/shared/lib/cad] Add `Extrude` kernel operation supporting custom polygon paths. | *Complexity: 6* | Success: Successfully renders an extruded pentagon.
+- [ ] **Task 9**: [src/shared/lib/cad] Add `Fillet` operation to the Manifold kernel bridge. | *Complexity: 7* | Success: Sharp edges are rounded via kernel command.
+- [ ] **Task 10**: [src/entities/history] Implement `DAG` (Directed Acyclic Graph) logic for the Parametric History Tree. | *Complexity: 6* | Success: Reordering nodes updates geometry correctly.
+- [ ] **Task 11**: [src/shared/ui/button] Create "Nexus" themed Button component with CSS variables. | *Complexity: 2* | Success: Button matches Aether aesthetic.
+- [ ] **Task 12**: [src/shared/ui/input] Create "Nexus" themed NumberInput with scrubbable labels. | *Complexity: 3* | Success: Dragging label changes value.
+- [ ] **Task 13**: [src/widgets/stratigraphy] Implement Layer Suppression (Ghosting) in the History Tree. | *Complexity: 4* | Success: Suppressed nodes are excluded from CSG build.
+- [ ] **Task 14**: [src/shared/lib/manifold] Implement `Manifold.asMesh()` serialization for worker-thread offloading. | *Complexity: 6* | Success: Mesh data passes between threads without corruption.
+- [ ] **Task 15**: [src/features/worker] Set up Web Worker for non-blocking CSG calculations. | *Complexity: 7* | Success: UI remains responsive during heavy boolean operations.
+- [ ] **Task 16**: [src/shared/lib/cad] Implement `Chamfer` kernel operation. | *Complexity: 5* | Success: Beveled edges rendered correctly.
+- [ ] **Task 17**: [src/entities/geometry] Add "X-Ray" mode to Viewport using Three.js custom shaders. | *Complexity: 5* | Success: Internal intersections are visible.
+- [ ] **Task 18**: [src/features/export] Implement STL Export utility. | *Complexity: 4* | Success: Generated STL opens in Cura/PrusaSlicer.
+- [ ] **Task 19**: [src/features/export] Implement GLTF Export with PBR material metadata. | *Complexity: 5* | Success: Model exports with correct colors/metalness.
+- [ ] **Task 20**: [src/shared/lib/math] Add Coordinate System (UCS) helper for local transformations. | *Complexity: 4* | Success: Primitives can be created relative to face normals.
+
+## Phase II: The Intelligence Layer (Tasks 21-45)
+- [ ] **Task 21**: [src/features/vlm] Set up VLM API client (OpenAI/Anthropic) for "Archaeological Digs". | *Complexity: 4* | Success: API returns valid JSON for simple prompt.
+- [ ] **Task 22**: [src/features/vlm] Implement PNG-to-Manifold parser for 2D sketch extraction. | *Complexity: 8* | Success: Hand-drawn square translates to Box primitive.
+- [ ] **Task 23**: [src/features/vlm] Implement PDF Blueprint parser using Vision-Language models. | *Complexity: 9* | Success: Dimensional callouts extracted from PDF.
+- [ ] **Task 24**: [src/widgets/reasoning] Create the "Reasoning Panel" for XAI (Explainable AI). | *Complexity: 4* | Success: Displays AI "Why" in Markdown.
+- [ ] **Task 25**: [src/shared/api/octopart] Integrate Octopart API for real-time part availability. | *Complexity: 5* | Success: Returns price/stock for part numbers.
+- [ ] **Task 26**: [src/shared/ui/vibe-light] Build the "Vibe Light" UI component (Status indicator). | *Complexity: 2* | Success: Colors update based on API response.
+- [ ] **Task 27**: [src/features/vlm] Implement "Command-K Oracle" for natural language modeling. | *Complexity: 7* | Success: "Make a 5mm hole" executes a Subtract operation.
+- [ ] **Task 28**: [src/entities/part] Implement `Part` entity schema with Supply-Chain metadata. | *Complexity: 4* | Success: Parts hold cost, lead-time, and vendor info.
+- [ ] **Task 29**: [src/features/vlm] Implement "Stratigraphy Auto-Fix" (AI suggests reordering). | *Complexity: 8* | Success: AI suggests order to avoid manifold errors.
+- [ ] **Task 30**: [src/widgets/bom] Refactor `BOMPanel` to use Octopart live data. | *Complexity: 5* | Success: BOM prices update in real-time.
+- [ ] **Task 31**: [src/features/vlm] Add "Style Transfer" for geometry (e.g. "Industrial", "Organic"). | *Complexity: 9* | Success: AI applies fillets/textures based on style.
+- [ ] **Task 32**: [src/entities/material] Create Material Library Entity (Metals, Plastics, Composites). | *Complexity: 3* | Success: Users can select from 50+ preset materials.
+- [ ] **Task 33**: [src/shared/ui/markdown] Implement Custom Markdown renderer for Reasoning Panel. | *Complexity: 3* | Success: LaTeX and code blocks render correctly.
+- [ ] **Task 34**: [src/features/vlm] Implement "Visual Diff" (Compare AI suggestion vs Current). | *Complexity: 7* | Success: Overlay shows proposed changes in purple.
+- [ ] **Task 35**: [src/shared/lib/vision] Implement basic Edge Detection on uploaded images. | *Complexity: 6* | Success: Highlights contours of uploaded blueprints.
+- [ ] **Task 36**: [src/features/vlm] "Part Search" - Find matching geometry in public CAD databases. | *Complexity: 8* | Success: Suggests standard hardware (screws/bolts).
+- [ ] **Task 37**: [src/widgets/sidebar] Add "Intelligence Tab" for AI interactions. | *Complexity: 3* | Success: UI tab exists and is switchable.
+- [ ] **Task 38**: [src/features/vlm] Implement "Geometry Explanation" (AI explains a complex node). | *Complexity: 5* | Success: Text description of node's purpose generated.
+- [ ] **Task 39**: [src/entities/history] Add "Checkpoint" system for history branch comparison. | *Complexity: 6* | Success: User can save/load "Design Branches".
+- [ ] **Task 40**: [src/features/vlm] Implement "Auto-Constraint" (AI aligns primitives). | *Complexity: 8* | Success: AI snaps objects to center/edges automatically.
+- [ ] **Task 41**: [src/shared/lib/manifold] Add `Boolean.Batch` for optimized multi-part unions. | *Complexity: 5* | Success: Faster performance for 100+ small parts.
+- [ ] **Task 42**: [src/features/vlm] "Unit Conversion Intelligence" (AI detects mm vs inches). | *Complexity: 4* | Success: Correctly scales model from imperial blueprints.
+- [ ] **Task 43**: [src/widgets/bom] Add "Lead-Time Warning" to BOM Panel. | *Complexity: 3* | Success: Red text for 4+ week lead times.
+- [ ] **Task 44**: [src/features/vlm] Implement "Annotation Extraction" from JPG/PDF. | *Complexity: 7* | Success: Text labels on blueprints become metadata keys.
+- [ ] **Task 45**: [src/shared/lib/vision] Implement "Scale Detection" from ruler icons in blueprints. | *Complexity: 6* | Success: Model matches real-world dimensions of drawing.
+
+## Phase III: The GMS Twin & Evolution (Tasks 46-70)
+- [ ] **Task 46**: [src/shared/shaders] Build Three.js custom shader for Tool Accessibility (3-axis). | *Complexity: 7* | Success: Areas unreachable by Z-axis highlight in red.
+- [ ] **Task 47**: [src/shared/shaders] Build shader for 5-axis tool accessibility. | *Complexity: 8* | Success: Visualizes undercut regions.
+- [ ] **Task 48**: [src/features/manufacturing] Implement Cost-per-Second Ticker based on complexity. | *Complexity: 6* | Success: Cost updates as fillets/holes are added.
+- [ ] **Task 49**: [src/entities/evolution] Implement "Garden View" container for variant spawning. | *Complexity: 5* | Success: UI displays 4 small viewports simultaneously.
+- [ ] **Task 50**: [src/features/evolution] Implement "Genetic Cross-over" for 3D variants. | *Complexity: 8* | Success: Merges features of two selected variants.
+- [ ] **Task 51**: [src/features/manufacturing] Add "Wall Thickness" diagnostic tool. | *Complexity: 7* | Success: Highlights walls thinner than 1.0mm.
+- [ ] **Task 52**: [src/shared/lib/cad] Implement "Shell" operation (Hollow out part). | *Complexity: 6* | Success: Creates uniform wall thickness.
+- [ ] **Task 53**: [src/widgets/evolution] Create "Variant Selector" UI for Garden View. | *Complexity: 4* | Success: User can "promote" a variant to main.
+- [ ] **Task 54**: [src/features/manufacturing] Add Machining Time Estimator (CNC Path simulation). | *Complexity: 8* | Success: Estimate within 20% of CAM software.
+- [ ] **Task 55**: [src/entities/geometry] Implement "Ghost Factory" shader overlay. | *Complexity: 6* | Success: Blueprints overlay onto 3D model for verification.
+- [ ] **Task 56**: [src/shared/lib/cad] Add "Draft Angle" operation for injection molding. | *Complexity: 7* | Success: Tapers faces for mold release.
+- [ ] **Task 57**: [src/features/manufacturing] Integrate "Protolabs/Xometry" pricing API. | *Complexity: 6* | Success: Fetches real quotes for current geometry.
+- [ ] **Task 58**: [src/widgets/sidebar] Add "Manufacturing Tab" with DFM feedback. | *Complexity: 4* | Success: Lists Design For Manufacturing issues.
+- [ ] **Task 59**: [src/features/evolution] Implement "Stress Goal" optimization (AI thins non-load regions). | *Complexity: 9* | Success: Mass reduction while maintaining structural integrity.
+- [ ] **Task 60**: [src/shared/shaders] Implement "Curvature Heatmap" shader. | *Complexity: 5* | Success: Visualizes surface smoothness.
+- [ ] **Task 61**: [src/features/manufacturing] Add "Build Volume" check for 3D printers. | *Complexity: 3* | Success: Warns if part exceeds 250x250x250mm.
+- [ ] **Task 62**: [src/entities/evolution] Implement "Mutator" logic (Randomize parameters within range). | *Complexity: 5* | Success: Generates 10 distinct variants in 2 seconds.
+- [ ] **Task 63**: [src/features/evolution] Add "Fitness Function" (Weight vs Strength). | *Complexity: 7* | Success: Variants ranked by performance.
+- [ ] **Task 64**: [src/shared/lib/cad] Implement "Rib" feature for reinforcement. | *Complexity: 6* | Success: Generates structural ribs between surfaces.
+- [ ] **Task 65**: [src/features/manufacturing] Add "Parting Line" detection. | *Complexity: 7* | Success: Shows where mold halves would meet.
+- [ ] **Task 66**: [src/shared/shaders] Build "Z-Height" heatmap for 3D printing. | *Complexity: 4* | Success: Visualizes print time per layer.
+- [ ] **Task 67**: [src/features/evolution] Implement "User Selection" feedback loop for AI. | *Complexity: 6* | Success: AI learns which variants the user prefers.
+- [ ] **Task 68**: [src/entities/part] Add "Material Waste" calculation to metadata. | *Complexity: 5* | Success: Displays stock vs final part volume ratio.
+- [ ] **Task 69**: [src/widgets/stratigraphy] Implement "Branch Tree" UI (Git-style history). | *Complexity: 7* | Success: Visualizes forks in design history.
+- [ ] **Task 70**: [src/features/manufacturing] Add "SLA Support" generation (Visualizer). | *Complexity: 8* | Success: Shows where support structures are needed.
+
+## Phase IV: The "Time-Machine" & "Swarm" (Tasks 71-90)
+- [ ] **Task 71**: [src/widgets/timeline] Implement the "Timeline Slider" UI. | *Complexity: 4* | Success: Scrubbing moves through history steps.
+- [ ] **Task 72**: [src/features/simulation] Implement "Degradation Matrix" (Wall thinning simulation). | *Complexity: 8* | Success: Geometry morphs to simulate 10 years of corrosion.
+- [ ] **Task 73**: [src/shared/lib/manifold] Implement `Manifold.morph()` for temporal transitions. | *Complexity: 7* | Success: Smooth visual transition between two states.
+- [ ] **Task 74**: [src/features/swarm] Implement Vector Embedding generator for geometry. | *Complexity: 7* | Success: Geometry becomes a unique "fingerprint" vector.
+- [ ] **Task 75**: [src/shared/api/failure-db] Integrate "Failure Database" lookup. | *Complexity: 6* | Success: Flags geometry similar to known recalled parts.
+- [ ] **Task 76**: [src/entities/simulation] Create "Fatigue Map" entity. | *Complexity: 5* | Success: Stores stress cycles per vertex.
+- [ ] **Task 77**: [src/shared/shaders] Build "Predictive Fatigue" Heatmap shader. | *Complexity: 8* | Success: Glowing hot-spots where part is likely to fail.
+- [ ] **Task 78**: [src/features/swarm] Implement Anonymization Layer for swarm data. | *Complexity: 6* | Success: Geometry uploaded without identifying project info.
+- [ ] **Task 79**: [src/widgets/timeline] Add "Lifecycle Milestones" to slider (Install, Mid-life, End-life). | *Complexity: 4* | Success: Tooltips show part condition at each phase.
+- [ ] **Task 80**: [src/features/simulation] Implement "Thermal Expansion" simulation. | *Complexity: 7* | Success: Part grows/warps based on temperature slider.
+- [ ] **Task 81**: [src/shared/lib/manifold] Implement "Noise Injection" (Surface wear/scratches). | *Complexity: 6* | Success: Adds realistic surface imperfections.
+- [ ] **Task 82**: [src/features/swarm] "Collaborative Filter" - Suggest features used by other engineers. | *Complexity: 8* | Success: "Other users added a fillet here."
+- [ ] **Task 83**: [src/entities/simulation] Implement "Material Fatigue" lookup table. | *Complexity: 4* | Success: Metal vs Plastic fatigue rates applied.
+- [ ] **Task 84**: [src/features/timeline] Implement "Temporal Diff" (Show change over time). | *Complexity: 6* | Success: Ghosted view of original vs corroded part.
+- [ ] **Task 85**: [src/shared/lib/cad] Add "Patch" operation for repair simulation. | *Complexity: 7* | Success: "Welds" two parts together in the timeline.
+- [ ] **Task 86**: [src/widgets/sidebar] Add "Lifecycle Tab". | *Complexity: 3* | Success: Controls for Time-Machine and Simulation.
+- [ ] **Task 87**: [src/features/swarm] Implement "Geometric Search" (Upload STL to find similar). | *Complexity: 9* | Success: Finds parts by shape, not just name.
+- [ ] **Task 88**: [src/features/simulation] Add "Load Case" definition (Forces/Torque). | *Complexity: 7* | Success: User can apply 100N force to a face.
+- [ ] **Task 89**: [src/shared/shaders] Build "Stress Streamline" shader. | *Complexity: 8* | Success: Visualizes force flow through the part.
+- [ ] **Task 90**: [src/features/timeline] Implement "Time-Lapse Export" (Video of design evolution). | *Complexity: 5* | Success: Generates .webm of history growth.
+
+## Phase V: Deployment & Polishing (Tasks 91-100+)
+- [ ] **Task 91**: [scripts/tauri] Set up Tauri configuration for Desktop. | *Complexity: 5* | Success: App runs as a native .exe/.app.
+- [ ] **Task 92**: [src/shared/lib/fs] Implement Local File System Access (Tauri-only). | *Complexity: 4* | Success: Can save/load .aether files directly.
+- [ ] **Task 93**: [src/features/parasitic] Implement "Onshape Overlay" logic (DOM Injection). | *Complexity: 8* | Success: Aether UI appears inside Onshape tab.
+- [ ] **Task 94**: [src/features/parasitic] Implement "Fusion 360 Bridge" (API-based). | *Complexity: 9* | Success: Pushes Aether geometry to Fusion 360.
+- [ ] **Task 95**: [src/features/collaboration] Integrate `Yjs` for multi-user editing. | *Complexity: 7* | Success: Two users can move the same Box in real-time.
+- [ ] **Task 96**: [src/widgets/collab] Build "Presence Indicator" (User cursors). | *Complexity: 4* | Success: See where other users are clicking.
+- [ ] **Task 97**: [src/shared/ui/theme] Implement "Dark/Light/Ghost" theme toggle. | *Complexity: 3* | Success: UI theme updates globally.
+- [ ] **Task 98**: [src/shared/lib/analytics] Add "Modeling Efficiency" dashboard. | *Complexity: 4* | Success: Shows "Time saved by AI" stats.
+- [ ] **Task 99**: [docs/api] Generate Swagger/OpenAPI docs for Aether Kernel. | *Complexity: 3* | Success: Documentation is browseable.
+- [ ] **Task 100**: [src/pages/onboarding] Create "Archaeologist's Handbook" (Interactive Tutorial). | *Complexity: 5* | Success: New users complete 3 tasks via guided UI.
+- [ ] **Task 101+**: Continuous refinement and bug-fixing of the Manifold-Three bridge.

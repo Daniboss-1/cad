@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useStore } from '@/lib/store';
+import { useStore } from '@/shared/lib/store';
 
 export default function BOMPanel() {
   const nodes = useStore((state) => state.nodes);

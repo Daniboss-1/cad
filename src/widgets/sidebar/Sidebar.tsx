@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useStore, OperationType } from '@/lib/store';
+import { useStore, OperationType } from '@/shared/lib/store';
 
 export default function Sidebar() {
   const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode } = useStore();
@@ -311,7 +311,7 @@ export default function Sidebar() {
                   <div style={{ width: '85%', height: '100%', background: '#3fb950' }} />
                 </div>
                 <div style={{ marginTop: '8px', fontSize: '10px', color: '#8b949e', lineHeight: '1.4' }}>
-                   ✓ Wall thickness > 1.0mm<br/>
+                   ✓ Wall thickness &gt; 1.0mm<br/>
                    ✓ Zero non-manifold edges<br/>
                    ✓ Watertight kernel verified
                 </div>
