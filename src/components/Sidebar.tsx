@@ -1,138 +1,97 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { useStore, OperationType } from '@/lib/store';
+import React, { useRef, useState } from 'react';
+import { useStore, OperationType, CADNode } from '@/lib/store';
 import { fetchVendorStatus } from '@/lib/vendor-service';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Wrench, Database, Activity } from 'lucide-react';
+import { Package, Wrench, Database, Activity, Eye, EyeOff, ChevronUp, ChevronDown, Trash2, Plus, RefreshCw } from 'lucide-react';
+import { findNodeRecursive } from '@/lib/utils';
 
 export default function Sidebar() {
-  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode, addNode } = useStore();
+  const { 
+    nodes, 
+    selectedNodeId, 
+    selectNode, 
+    removeNode, 
+    updateNode, 
+    updateNodeParams, 
+    updateNodeTransform, 
+    moveNode, 
+    addNode 
+  } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const findNodeRecursive = (nodes: any[], id: string | null): any => {
-    if (!id) return null;
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNodeRecursive(node.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const selectedNode = findNodeRecursive(nodes, selectedNodeId);
 
   const getOpIcon = (op: OperationType) => {
     switch (op) {
-      case 'Add': return '[+]';
-      case 'Subtract': return '[-]';
-      case 'Intersect': return '[×]';
+      case 'Add': return '+';
+      case 'Subtract': return '-';
+      case 'Intersect': return '×';
     }
   };
 
   const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
 
-  const NodeItem = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => (
+  const NodeItem = ({ node, index, depth = 0 }: { node: CADNode, index: number, depth?: number }) => (
     <div key={node.id} style={{ position: 'relative' }}>
-      {depth > 0 && (
-        <div style={{
-          position: 'absolute',
-          left: `${(depth - 1) * 12 + 6}px`,
-          top: 0,
-          bottom: 0,
-          width: '1px',
-          background: '#30363d',
-          zIndex: 0
-        }} />
-      )}
       <div
         onClick={() => selectNode(node.id)}
         style={{
           padding: '8px 10px',
-          background: selectedNodeId === node.id ? '#21262d' : 'transparent',
-          border: `1px solid ${selectedNodeId === node.id ? '#58a6ff' : 'transparent'}`,
-          borderRadius: '6px',
+          background: selectedNodeId === node.id ? 'rgba(88, 166, 255, 0.1)' : 'transparent',
+          border: `1px solid ${selectedNodeId === node.id ? 'rgba(88, 166, 255, 0.3)' : 'transparent'}`,
+          borderRadius: '8px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '8px',
           opacity: node.visible ? 1 : 0.4,
           marginLeft: `${depth * 12}px`,
           position: 'relative',
-          zIndex: 1
+          zIndex: 1,
+          transition: 'all 0.2s ease',
         }}
       >
-        <span style={{ color: '#8b949e', width: '15px', fontSize: '9px' }}>{index}</span>
         <span style={{ 
           color: node.operation === 'Subtract' ? '#f85149' : 
                  node.operation === 'Intersect' ? '#d29922' : '#3fb950',
           fontWeight: 'bold',
-          fontSize: '10px'
+          fontSize: '12px',
+          width: '10px',
+          textAlign: 'center'
         }}>
           {getOpIcon(node.operation)}
         </span>
-        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {node.name || node.type}
+        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '11px', fontWeight: selectedNodeId === node.id ? 600 : 400 }}>
+          {node.name || node.type.toUpperCase()}
         </span>
         
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '2px', opacity: selectedNodeId === node.id ? 1 : 0.5 }}>
           {isContainer(node.type) && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                addNode('Box', node.id);
-              }}
-              title="Add Child"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#58a6ff', padding: '2px' }}
-            >
-              +
-            </button>
+              onClick={(e) => { e.stopPropagation(); addNode('Box', node.id); }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '4px' }}
+            ><Plus size={12} /></button>
           )}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              moveNode(node.id, 'up');
-            }}
-            title="Move Up"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
-          >
-            ↑
-          </button>
+            onClick={(e) => { e.stopPropagation(); moveNode(node.id, 'up'); }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '4px' }}
+          ><ChevronUp size={12} /></button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              moveNode(node.id, 'down');
-            }}
-            title="Move Down"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
-          >
-            ↓
-          </button>
+            onClick={(e) => { e.stopPropagation(); updateNode(node.id, { visible: !node.visible }); }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '4px' }}
+          >{node.visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              updateNode(node.id, { visible: !node.visible });
-            }}
-            title="Toggle Visibility"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
-          >
-            {node.visible ? '◎' : '◉'}
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              removeNode(node.id);
-            }}
-            style={{ background: 'transparent', border: 'none', color: '#f85149', cursor: 'pointer', marginLeft: '4px' }}
-          >
-            ×
-          </button>
+            onClick={(e) => { e.stopPropagation(); removeNode(node.id); }}
+            style={{ background: 'transparent', border: 'none', color: 'rgba(248, 81, 73, 0.8)', cursor: 'pointer', padding: '4px' }}
+          ><Trash2 size={12} /></button>
         </div>
       </div>
       {node.children && node.children.length > 0 && (
-        <div style={{ marginTop: '4px' }}>
-          {node.children.map((child: any, i: number) => (
+        <div style={{ marginTop: '2px', borderLeft: '1px solid #21262d', marginLeft: `${depth * 12 + 14}px` }}>
+          {node.children.map((child, i) => (
             <NodeItem key={child.id} node={child} index={i} depth={depth + 1} />
           ))}
         </div>
@@ -142,367 +101,247 @@ export default function Sidebar() {
 
   return (
     <motion.div
-    initial={{ x: 300, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-    className="glassmorphism animate-luxury"
-    style={{
-    width: '320px',
-    display: 'flex',
-    flexDirection: 'column',
-    color: '#c9d1d9',
-    fontFamily: 'monospace',
-    fontSize: '13px',
-    zIndex: 10,
-    }}
+      initial={{ x: -320, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      style={{
+        width: '320px',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'rgba(13, 17, 23, 0.8)',
+        backdropFilter: 'blur(20px)',
+        borderRight: '1px solid rgba(48, 54, 61, 0.5)',
+        color: '#c9d1d9',
+        fontFamily: 'monospace',
+        zIndex: 10,
+      }}
     >
-
-      <div style={{ padding: '20px', borderBottom: '1px solid #30363d' }}>
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(48, 54, 61, 0.5)' }}>
         <h3 style={{ 
           margin: '0 0 16px 0', 
-          fontSize: '11px', 
+          fontSize: '10px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
           letterSpacing: '2px',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
+          fontWeight: 700
         }}>
-          <Database size={14} />
-          Stratigraphy
+          <Database size={14} color="#58a6ff" />
+          Scene Hierarchy
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '30vh', overflowY: 'auto' }}>
           {nodes.map((node, index) => (
             <NodeItem key={node.id} node={node} index={index} />
           ))}
         </div>
       </div>
 
-
-      {/* Properties */}
-      <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+      <div style={{ padding: '24px 20px', flex: 1, overflowY: 'auto' }}>
         <h3 style={{ 
           margin: '0 0 16px 0', 
-          fontSize: '11px', 
+          fontSize: '10px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
           letterSpacing: '2px',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '8px',
+          fontWeight: 700
         }}>
-          <Wrench size={14} />
-          Parameters
+          <Wrench size={14} color="#d29922" />
+          Properties
         </h3>
-        {selectedNode ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Name */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>
-                Identity
-              </label>
-              <input
-                type="text"
-                value={selectedNode.name || ''}
-                onChange={(e) => updateNode(selectedNode.id, { name: e.target.value })}
-                style={{
-                  width: '100%',
-                  background: '#161b22',
-                  border: '1px solid #30363d',
-                  color: '#c9d1d9',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  outline: 'none',
-                  fontFamily: 'monospace',
-                  fontSize: '12px'
-                }}
-              />
-            </div>
-
-            {/* Operation Selector */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>
-                Operation
-              </label>
-              <select
-                value={selectedNode.operation}
-                onChange={(e) => updateNode(selectedNode.id, { operation: e.target.value as OperationType })}
-                style={{
-                  width: '100%',
-                  background: '#161b22',
-                  border: '1px solid #30363d',
-                  color: '#c9d1d9',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  outline: 'none',
-                  fontFamily: 'monospace'
-                }}
-              >
-                <option value="Add">Union (Add)</option>
-                <option value="Subtract">Difference (Subtract)</option>
-                <option value="Intersect">Intersection</option>
-              </select>
-            </div>
-
-            {/* Primitive Parameters */}
-            {Object.entries(selectedNode.params).map(([key, value]) => {
-              if (typeof value === 'number') {
-                let min = 0.1;
-                let max = 10;
-                let step = 0.1;
-                if (key.toLowerCase().includes('segments')) {
-                  min = 3;
-                  max = 128;
-                  step = 1;
-                }
-                return (
-                  <div key={key}>
-                    <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                      <label style={{ color: '#8b949e', textTransform: 'uppercase' }}>{key}</label>
-                      <span style={{ color: '#58a6ff' }}>{value}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={min}
-                      max={max}
-                      step={step}
-                      value={value}
-                      onChange={(e) =>
-                        updateNodeParams(selectedNode.id, { [key]: parseFloat(e.target.value) })
-                      }
-                      style={{ 
-                        width: '100%',
-                        accentColor: '#58a6ff',
-                        cursor: 'ew-resize'
-                      }}
-                    />
-                  </div>
-                );
-              }
-              if (typeof value === 'boolean') {
-                return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input
-                      type="checkbox"
-                      checked={value}
-                      onChange={(e) =>
-                        updateNodeParams(selectedNode.id, { [key]: e.target.checked })
-                      }
-                      style={{ accentColor: '#58a6ff' }}
-                    />
-                    <label style={{ color: '#8b949e', textTransform: 'uppercase', fontSize: '11px' }}>{key}</label>
-                  </div>
-                );
-              }
-              if (key === 'paths') {
-                return (
-                  <div key={key}>
-                    <label style={{ color: '#8b949e', textTransform: 'uppercase', fontSize: '11px' }}>{key}</label>
-                    <div style={{ color: '#58a6ff', fontSize: '10px' }}>{JSON.stringify(value).substring(0, 50)}...</div>
-                  </div>
-                );
-              }
-              return null;
-            })}
-
-            {/* Transformations */}
-            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Transformations
-              </label>
-              
-              {/* Position */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '10px', color: '#8b949e' }}>POSITION</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {['X', 'Y', 'Z'].map((axis, i) => (
-                    <div key={axis} style={{ flex: 1 }}>
-                      <input
-                        type="number"
-                        value={selectedNode.transform.position[i]}
-                        step={0.001}
-                        onChange={(e) => {
-                          const newPos = [...selectedNode.transform.position] as [number, number, number];
-                          newPos[i] = parseFloat(e.target.value) || 0;
-                          updateNodeTransform(selectedNode.id, { position: newPos });
-                        }}
-                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#58a6ff', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+        
+        <AnimatePresence mode="wait">
+          {selectedNode ? (
+            <motion.div 
+              key={selectedNode.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+            >
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>Name</label>
+                <input
+                  type="text"
+                  value={selectedNode.name || ''}
+                  onChange={(e) => updateNode(selectedNode.id, { name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    color: '#ffffff',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontSize: '12px',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#58a6ff'}
+                  onBlur={(e) => e.target.style.borderColor = '#30363d'}
+                />
               </div>
 
-              {/* Rotation */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '10px', color: '#8b949e' }}>ROTATION (DEG)</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {['X', 'Y', 'Z'].map((axis, i) => (
-                    <div key={axis} style={{ flex: 1 }}>
-                      <input
-                        type="number"
-                        value={selectedNode.transform.rotation[i]}
-                        step={0.01}
-                        onChange={(e) => {
-                          const newRot = [...selectedNode.transform.rotation] as [number, number, number];
-                          newRot[i] = parseFloat(e.target.value) || 0;
-                          updateNodeTransform(selectedNode.id, { rotation: newRot });
-                        }}
-                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#d29922', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>Boolean Operation</label>
+                <select
+                  value={selectedNode.operation}
+                  onChange={(e) => updateNode(selectedNode.id, { operation: e.target.value as OperationType })}
+                  style={{
+                    width: '100%',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    color: '#ffffff',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontSize: '12px',
+                    appearance: 'none'
+                  }}
+                >
+                  <option value="Add">UNION (+)</option>
+                  <option value="Subtract">SUBTRACT (-)</option>
+                  <option value="Intersect">INTERSECT (×)</option>
+                </select>
               </div>
 
-              {/* Scale */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '10px', color: '#8b949e' }}>SCALE</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {['X', 'Y', 'Z'].map((axis, i) => (
-                    <div key={axis} style={{ flex: 1 }}>
-                      <input
-                        type="number"
-                        value={selectedNode.transform.scale[i]}
-                        step={0.001}
-                        min={0.001}
-                        onChange={(e) => {
-                          const newScale = [...selectedNode.transform.scale] as [number, number, number];
-                          newScale[i] = parseFloat(e.target.value) || 0.001;
-                          updateNodeTransform(selectedNode.id, { scale: newScale });
-                        }}
-                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#3fb950', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Phase 3: Metadata (Live BOM) */}
-            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                <Package size={12} />
-                Metadata (Supply-Chain Sentinel)
-              </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>SKU / PART NUMBER</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <label style={{ display: 'block', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>Parameters</label>
+                {Object.entries(selectedNode.params).map(([key, value]) => {
+                  if (typeof value === 'number') {
+                    let min = 0.1, max = 20, step = 0.1;
+                    if (key.includes('segments')) { min = 3; max = 64; step = 1; }
+                    return (
+                      <div key={key}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '6px' }}>
+                          <span style={{ color: '#8b949e' }}>{key.toUpperCase()}</span>
+                          <span style={{ color: '#58a6ff', fontWeight: 'bold' }}>{value.toFixed(key.includes('segments') ? 0 : 2)}</span>
+                        </div>
+                        <input
+                          type="range" min={min} max={max} step={step} value={value}
+                          onChange={(e) => updateNodeParams(selectedNode.id, { [key]: parseFloat(e.target.value) })}
+                          style={{ width: '100%', accentColor: '#58a6ff' }}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid #21262d', paddingTop: '16px' }}>
+                <label style={{ display: 'block', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>Transformation</label>
+                
+                {['position', 'rotation', 'scale'].map((type) => (
+                  <div key={type}>
+                    <span style={{ fontSize: '9px', color: '#484f58', display: 'block', marginBottom: '8px' }}>{type.toUpperCase()}</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {['X', 'Y', 'Z'].map((axis, i) => (
+                        <input
+                          key={axis}
+                          type="number"
+                          value={(selectedNode.transform as any)[type][i]}
+                          onChange={(e) => {
+                            const current = [...(selectedNode.transform as any)[type]];
+                            current[i] = parseFloat(e.target.value) || 0;
+                            updateNodeTransform(selectedNode.id, { [type]: current });
+                          }}
+                          style={{ 
+                            flex: 1, 
+                            background: '#0d1117', 
+                            border: '1px solid #30363d', 
+                            color: type === 'position' ? '#58a6ff' : type === 'rotation' ? '#d29922' : '#3fb950', 
+                            padding: '6px', 
+                            borderRadius: '4px', 
+                            fontSize: '10px',
+                            textAlign: 'center'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderTop: '1px solid #21262d', paddingTop: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  <Package size={12} color="#3fb950" />
+                  Supply Chain
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ position: 'relative' }}>
                     <input
                       type="text"
                       value={selectedNode.sku || ''}
-                      placeholder="e.g. MC-94459"
+                      placeholder="PART NUMBER (SKU)"
                       onChange={(e) => updateNode(selectedNode.id, { sku: e.target.value })}
-                      style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', padding: '8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
+                      style={{ width: '100%', background: '#0d1117', border: '1px solid #30363d', color: '#ffffff', padding: '10px', paddingRight: '40px', borderRadius: '8px', fontSize: '11px' }}
                     />
                     <button
+                      disabled={isSyncing}
                       onClick={async () => {
                         if (selectedNode.sku) {
+                          setIsSyncing(true);
                           const data = await fetchVendorStatus(selectedNode.sku);
-                          updateNode(selectedNode.id, { 
-                            vendor: data.vendor,
-                            cost: data.price,
-                            leadTime: data.leadTime
-                          });
+                          updateNode(selectedNode.id, { vendor: data.vendor, cost: data.price, leadTime: data.leadTime });
+                          setIsSyncing(false);
                         }
                       }}
-                      style={{ background: '#21262d', border: '1px solid #30363d', color: '#58a6ff', borderRadius: '6px', padding: '0 8px', cursor: 'pointer' }}
+                      style={{ position: 'absolute', right: '8px', top: '8px', background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer' }}
                     >
-                      Sync
+                      <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
                     </button>
                   </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>MATERIAL</label>
-                  <input
-                    type="text"
-                    value={selectedNode.material || ''}
-                    placeholder="e.g. Aluminum 6061"
-                    onChange={(e) => updateNode(selectedNode.id, { material: e.target.value })}
-                    style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', padding: '8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
-                  />
+                  {selectedNode.vendor && (
+                    <div style={{ fontSize: '10px', color: '#8b949e', background: 'rgba(63, 185, 80, 0.05)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(63, 185, 80, 0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Vendor</span><span style={{ color: '#ffffff' }}>{selectedNode.vendor}</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>Price</span><span style={{ color: '#3fb950' }}>${selectedNode.cost}</span></div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </motion.div>
+          ) : (
+            <div style={{ color: '#484f58', textAlign: 'center', marginTop: '48px', fontSize: '11px', letterSpacing: '0.5px' }}>
+              NO NODE SELECTED<br/>SELECT FROM HIERARCHY
             </div>
-
-            {/* Phase 4: Manufacturing Sim */}
-            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                <Activity size={12} />
-                GMS Twin (Manufacturing Sim)
-              </label>
-              <div style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '10px', color: '#8b949e' }}>FEASIBILITY</span>
-                  <span style={{ fontSize: '10px', color: '#3fb950', fontWeight: 'bold' }}>OPTIMAL</span>
-                </div>
-                <div style={{ height: '4px', background: '#21262d', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: '85%', height: '100%', background: '#3fb950' }} />
-                </div>
-                <div style={{ marginTop: '8px', fontSize: '10px', color: '#8b949e', lineHeight: '1.4' }}>
-                   ✓ Wall thickness &gt; 1.0mm<br/>
-                   ✓ Zero non-manifold edges<br/>
-                   ✓ Watertight kernel verified
-                </div>
-              </div>
-            </div>
-
-            {/* Phase 2: PDF Archaeological Dig */}
-            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px', marginBottom: '40px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                <Database size={12} />
-                Digital Archaeology (PDF-to-CAD)
-              </label>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
-                accept="application/pdf"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const { parseDigitalArchaeology } = await import('@/lib/pdf-parser');
-                    const result = await parseDigitalArchaeology(file);
-                    result.paths.forEach(p => {
-                      addNode('Extrusion', undefined, { paths: [p.points], height: 1 });
-                    });
-                  }
-                }}
-              />
-              <div 
-                style={{ 
-                  border: '1px dashed #30363d', 
-                  padding: '20px', 
-                  borderRadius: '6px', 
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.2s'
-                }}
-                onClick={() => fileInputRef.current?.click()}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = '#58a6ff'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = '#30363d'}
-              >
-                <span style={{ fontSize: '10px', color: '#8b949e' }}>UPLOAD PDF BLUEPRINT</span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ color: '#484f58', textAlign: 'center', marginTop: '40px', fontSize: '11px' }}>
-            SELECT A LAYER TO ADJUST PARAMETERS
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
 
-      <div style={{ 
-        padding: '16px', 
-        borderTop: '1px solid #30363d', 
-        fontSize: '10px', 
-        color: '#484f58',
-        background: '#161b22'
-      }}>
-        AETHER CAD v0.1.0-alpha
+      <div style={{ padding: '20px', background: 'rgba(1, 4, 9, 0.4)', borderTop: '1px solid rgba(48, 54, 61, 0.5)' }}>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: '1px dashed #30363d',
+            borderRadius: '8px',
+            padding: '16px',
+            color: '#8b949e',
+            fontSize: '10px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#58a6ff'; }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+        >
+          DIGITAL ARCHAEOLOGY (PDF)
+        </button>
+        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="application/pdf" />
       </div>
+      
+      <style jsx>{`
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </motion.div>
   );
 }
