@@ -17,7 +17,8 @@ export default function Sidebar() {
     updateNodeParams, 
     updateNodeTransform, 
     moveNode, 
-    addNode 
+    addNode,
+    archaeologyResult
   } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -107,15 +108,15 @@ export default function Sidebar() {
         width: '320px',
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(13, 17, 23, 0.8)',
-        backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(48, 54, 61, 0.5)',
+        background: 'rgba(13, 17, 23, 0.7)',
+        backdropFilter: 'blur(24px)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
         color: '#c9d1d9',
         fontFamily: 'monospace',
         zIndex: 10,
       }}
     >
-      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(48, 54, 61, 0.5)' }}>
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
         <h3 style={{ 
           margin: '0 0 16px 0', 
           fontSize: '10px', 
@@ -128,7 +129,7 @@ export default function Sidebar() {
           fontWeight: 700
         }}>
           <Database size={14} color="#58a6ff" />
-          Scene Hierarchy
+          Phase 1: Core Modeling
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '30vh', overflowY: 'auto' }}>
           {nodes.map((node, index) => (
@@ -150,7 +151,7 @@ export default function Sidebar() {
           fontWeight: 700
         }}>
           <Wrench size={14} color="#d29922" />
-          Properties
+          Stratigraphy Parameters
         </h3>
         
         <AnimatePresence mode="wait">
@@ -268,7 +269,7 @@ export default function Sidebar() {
               <div style={{ borderTop: '1px solid #21262d', paddingTop: '16px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700 }}>
                   <Package size={12} color="#3fb950" />
-                  Supply Chain
+                  Phase 3: Manufacturing Intelligence
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ position: 'relative' }}>
@@ -311,24 +312,69 @@ export default function Sidebar() {
         </AnimatePresence>
       </div>
 
-      <div style={{ padding: '20px', background: 'rgba(1, 4, 9, 0.4)', borderTop: '1px solid rgba(48, 54, 61, 0.5)' }}>
+      {archaeologyResult && (
+        <div style={{ padding: '24px 20px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(0,0,0,0.2)' }}>
+          <h3 style={{ 
+            margin: '0 0 16px 0', 
+            fontSize: '10px', 
+            color: '#8b949e', 
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+            fontWeight: 700
+          }}>
+            Archaeology Audit
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '9px', color: '#58a6ff', fontWeight: 600 }}>CONFIDENCE HEATMAP</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {archaeologyResult.dimensions.map((dim, i) => {
+                const color = dim.confidence > 0.8 ? '#3fb950' : dim.confidence > 0.5 ? '#d29922' : '#f85149';
+                return (
+                  <div key={i} style={{ 
+                    padding: '4px 8px', 
+                    background: `${color}22`, 
+                    border: `1px solid ${color}44`,
+                    borderRadius: '4px',
+                    fontSize: '9px',
+                    color: color
+                  }}>
+                    {dim.text} ({(dim.confidence * 100).toFixed(0)}%)
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: '12px', fontSize: '9px', color: '#8b949e' }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px', color: '#c9d1d9' }}>AUDIT TRAIL</div>
+              <div style={{ maxHeight: '100px', overflowY: 'auto', fontSize: '8px', opacity: 0.8 }}>
+                {archaeologyResult.auditTrail.map((log, i) => (
+                  <div key={i} style={{ marginBottom: '2px' }}>{log}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '20px', background: 'rgba(1, 4, 9, 0.4)', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
         <button
           onClick={() => fileInputRef.current?.click()}
           style={{
             width: '100%',
             background: 'transparent',
-            border: '1px dashed #30363d',
+            border: '1px dashed rgba(255, 255, 255, 0.1)',
             borderRadius: '8px',
             padding: '16px',
             color: '#8b949e',
             fontSize: '10px',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            fontWeight: 700,
+            letterSpacing: '1px'
           }}
           onMouseOver={(e) => { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#58a6ff'; }}
-          onMouseOut={(e) => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+          onMouseOut={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#8b949e'; }}
         >
-          DIGITAL ARCHAEOLOGY (PDF)
+          PHASE 2: ARCHAEOLOGY ENGINE (PDF)
         </button>
         <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="application/pdf" />
       </div>

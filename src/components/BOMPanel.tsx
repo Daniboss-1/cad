@@ -128,7 +128,9 @@ export default function BOMPanel() {
         zIndex: 5,
         maxHeight: '40vh',
         overflowY: 'auto',
-        border: '1px solid rgba(48, 54, 61, 0.5)'
+        background: 'rgba(13, 17, 23, 0.7)',
+        backdropFilter: 'blur(24px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
       }}
     >
       <div style={{ marginBottom: '16px' }}>
@@ -140,7 +142,7 @@ export default function BOMPanel() {
             background: isRefreshing ? '#d29922' : '#3fb950', 
             boxShadow: `0 0 10px ${isRefreshing ? '#d29922' : '#3fb950'}`
           }} />
-          <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '1px' }}>SUPPLY-CHAIN SENTINEL</span>
+          <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '1px' }}>PHASE 3: MANUFACTURING INTELLIGENCE</span>
         </div>
         <div style={{ color: '#8b949e', fontSize: '9px', fontWeight: 600 }}>{bomItems.length} ACTIVE MANIFOLDS VERIFIED</div>
       </div>
