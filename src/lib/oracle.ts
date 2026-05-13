@@ -13,18 +13,22 @@ export function parseIntent(input: string): Intent | null {
   
   if (text.length < 3) return null;
 
-  const atMatch = text.match(/at\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/);
+  const atMatch = text.match(/at\s+(-?\d+(?:\.\d+)?)[,\s]\s*(-?\d+(?:\.\d+)?)[,\s]\s*(-?\d+(?:\.\d+)?)/);
   let transform: any = {};
   if (atMatch) {
     transform.position = [parseFloat(atMatch[1]), parseFloat(atMatch[2]), parseFloat(atMatch[3])];
   }
 
   if (text.includes('box') || text.includes('cube')) {
-    const dims = text.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)/) || text.match(/size\s*(\d+(?:\.\d+)?)/);
+    const dims = text.match(/(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)/) || 
+                 text.match(/(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)/) ||
+                 text.match(/size\s*(\d+(?:\.\d+)?)/);
     let params = { width: 1, height: 1, depth: 1, center: true };
     if (dims) {
       if (dims.length === 4) {
         params = { width: parseFloat(dims[1]), height: parseFloat(dims[2]), depth: parseFloat(dims[3]), center: true };
+      } else if (dims.length === 3) {
+        params = { width: parseFloat(dims[1]), height: parseFloat(dims[2]), depth: parseFloat(dims[1]), center: true };
       } else {
         const s = parseFloat(dims[1]);
         params = { width: s, height: s, depth: s, center: true };

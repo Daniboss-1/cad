@@ -73,29 +73,29 @@ export async function createTorus(params: TorusParams): Promise<ManifoldInstance
   return Manifold.torus(radius, tube, radialSegments, tubularSegments);
 }
 
-export async function union(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.add(meshB);
-}
-
-export async function difference(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.subtract(meshB);
-}
-
-export async function intersect(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.intersect(meshB);
-}
-
-export async function translate(mesh: ManifoldInstance, vector: [number, number, number]): Promise<ManifoldInstance> {
+export async function translateMesh(mesh: ManifoldInstance, vector: [number, number, number]): Promise<ManifoldInstance> {
   return mesh.translate(vector);
 }
 
-export async function rotate(mesh: ManifoldInstance, angles: [number, number, number]): Promise<ManifoldInstance> {
+export async function rotateMesh(mesh: ManifoldInstance, angles: [number, number, number]): Promise<ManifoldInstance> {
   // Manifold rotate takes angles in degrees for each axis
   return mesh.rotate(angles);
 }
 
-export async function scale(mesh: ManifoldInstance, factors: [number, number, number]): Promise<ManifoldInstance> {
+export async function scaleMesh(mesh: ManifoldInstance, factors: [number, number, number]): Promise<ManifoldInstance> {
   return mesh.scale(factors);
+}
+
+export async function unionMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
+  return meshA.add(meshB);
+}
+
+export async function subtractMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
+  return meshA.subtract(meshB);
+}
+
+export async function intersectMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
+  return meshA.intersect(meshB);
 }
 
 export async function extrude(paths: number[][][], height: number): Promise<ManifoldInstance> {

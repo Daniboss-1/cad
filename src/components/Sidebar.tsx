@@ -32,7 +32,18 @@ export default function Sidebar() {
   const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
 
   const NodeItem = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => (
-    <div key={node.id}>
+    <div key={node.id} style={{ position: 'relative' }}>
+      {depth > 0 && (
+        <div style={{
+          position: 'absolute',
+          left: `${(depth - 1) * 12 + 6}px`,
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          background: '#30363d',
+          zIndex: 0
+        }} />
+      )}
       <div
         onClick={() => selectNode(node.id)}
         style={{
@@ -46,6 +57,8 @@ export default function Sidebar() {
           gap: '10px',
           opacity: node.visible ? 1 : 0.4,
           marginLeft: `${depth * 12}px`,
+          position: 'relative',
+          zIndex: 1
         }}
       >
         <span style={{ color: '#8b949e', width: '15px', fontSize: '9px' }}>{index}</span>
@@ -294,7 +307,7 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.position[i]}
-                        step={0.1}
+                        step={0.001}
                         onChange={(e) => {
                           const newPos = [...selectedNode.transform.position] as [number, number, number];
                           newPos[i] = parseFloat(e.target.value) || 0;
@@ -316,7 +329,7 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.rotation[i]}
-                        step={1}
+                        step={0.01}
                         onChange={(e) => {
                           const newRot = [...selectedNode.transform.rotation] as [number, number, number];
                           newRot[i] = parseFloat(e.target.value) || 0;
@@ -338,11 +351,11 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.scale[i]}
-                        step={0.1}
-                        min={0.1}
+                        step={0.001}
+                        min={0.001}
                         onChange={(e) => {
                           const newScale = [...selectedNode.transform.scale] as [number, number, number];
-                          newScale[i] = parseFloat(e.target.value) || 0.1;
+                          newScale[i] = parseFloat(e.target.value) || 0.001;
                           updateNodeTransform(selectedNode.id, { scale: newScale });
                         }}
                         style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#3fb950', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
