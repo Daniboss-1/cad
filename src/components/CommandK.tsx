@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore, NodeType, AgentMessage } from '@/lib/store';
 import { parseIntent, Intent } from '@/lib/oracle';
-import { orchestrate } from '@/lib/oracle/orchestrator';
+import { OracleCore } from '@/lib/oracle-core';
 
 export default function CommandK() {
-  const [open, setOpen] = useState(false);
+
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [suggestedIntent, setSuggestedIntent] = useState<Intent | null>(null);
@@ -76,21 +76,23 @@ export default function CommandK() {
     }
 
     if (type === 'Oracle' || (filteredOptions.length === 0 && search.length > 0)) {
-      setIsOracleProcessing(true);
-      
-      await orchestrate(search, { nodes, selection: selectedNodeId }, (msg) => {
-        addMessage(msg);
-        if (msg.role === 'assistant' && msg.agent === 'Architect' && msg.content.includes('box')) {
-           // Example of agent taking action
-           addNode('Box');
-        }
-      });
+    setIsOracleProcessing(true);
 
-      setIsOracleProcessing(false);
-      setSearch('');
-      return;
+    addMessage({ role: 'user', content: search });
+    const oracle = OracleCore.getInstance();
+    const responses = await oracle.processNaturalLanguage(search);
+
+    for (const res of responses) {
+    await new Promise(r => setTimeout(r, 600)); // Simulate thinking
+    addMessage({ role: 'assistant', agent: res.agent, content: res.content });
+    if (res.action) res.action();
     }
-    addNode(type as NodeType);
+
+    setIsOracleProcessing(false);
+    setSearch('');
+    return;
+    }
+
     setOpen(false);
     setSearch('');
   };
@@ -99,35 +101,34 @@ export default function CommandK() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        background: 'rgba(13, 17, 23, 0.8)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 1000,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingTop: '15vh',
-      }}
-      onClick={() => setOpen(false)}
+    style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(13, 17, 23, 0.4)',
+    backdropFilter: 'blur(8px)',
+    zIndex: 1000,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingTop: '15vh',
+    }}
+    onClick={() => setOpen(false)}
     >
-      <div
-        style={{
-          width: '600px',
-          background: '#161b22',
-          border: '1px solid #30363d',
-          borderRadius: '12px',
-          padding: '12px',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
-          fontFamily: 'monospace',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px', borderBottom: '1px solid #30363d' }}>
+    <div
+    className="glassmorphism animate-luxury"
+    style={{
+      width: '600px',
+      borderRadius: '12px',
+      padding: '12px',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+      fontFamily: 'monospace',
+    }}
+    onClick={(e) => e.stopPropagation()}
+    >
+
           <span style={{ color: '#58a6ff', marginRight: '12px', fontSize: '20px' }}>›</span>
           <input
             ref={inputRef}

@@ -142,23 +142,21 @@ export default function Sidebar() {
 
   return (
     <motion.div
-      initial={{ x: 300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-      style={{
-        width: '320px',
-        background: 'rgba(13, 17, 23, 0.8)',
-        backdropFilter: 'blur(20px)',
-        borderLeft: '1px solid rgba(48, 54, 61, 0.5)',
-        display: 'flex',
-        flexDirection: 'column',
-        color: '#c9d1d9',
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        zIndex: 10,
-      }}
+    initial={{ x: 300, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+    className="glassmorphism animate-luxury"
+    style={{
+    width: '320px',
+    display: 'flex',
+    flexDirection: 'column',
+    color: '#c9d1d9',
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    zIndex: 10,
+    }}
     >
-      {/* History Tree / Stratigraphy */}
+
       <div style={{ padding: '20px', borderBottom: '1px solid #30363d' }}>
         <h3 style={{ 
           margin: '0 0 16px 0', 

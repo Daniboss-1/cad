@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
+import { checkCollision } from '@/lib/mesh-utils';
 import { reachabilityVertexShader, reachabilityFragmentShader } from '@/shaders/reachability.glsl';
 
 interface ViewportProps {
@@ -18,8 +24,10 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const composerRef = useRef<EffectComposer | null>(null);
+  const outlinePassRef = useRef<OutlinePass | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
-  const toolRef = useRef<THREE.Mesh | null>(null);
+
   const gizmoRef = useRef<TransformControls | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const frameRef = useRef<number>(0);
@@ -49,9 +57,28 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     rendererRef.current = renderer;
+
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    const outlinePass = new OutlinePass(new THREE.Vector2(width, height), scene, camera);
+    outlinePass.edgeStrength = 3.0;
+    outlinePass.edgeGlow = 1.0;
+    outlinePass.edgeThickness = 1.0;
+    outlinePass.pulsePeriod = 2;
+    outlinePass.visibleEdgeColor.set('#58a6ff');
+    outlinePass.hiddenEdgeColor.set('#101010');
+    composer.addPass(outlinePass);
+    outlinePassRef.current = outlinePass;
+
+    const gammaPass = new ShaderPass(GammaCorrectionShader);
+    composer.addPass(gammaPass);
+    composerRef.current = composer;
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
@@ -91,6 +118,13 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
     const axesHelper = new THREE.AxesHelper(5);
     scene.add(axesHelper);
 
+    // Orientation Gizmo
+    const gizmoSize = 100;
+    const gizmoScene = new THREE.Scene();
+    const gizmoCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    const gizmoAxes = new THREE.AxesHelper(50);
+    gizmoScene.add(gizmoAxes);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -104,20 +138,57 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
     scene.add(gizmo);
 
     const animate = () => {
-      frameRef.current = requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+    frameRef.current = requestAnimationFrame(animate);
+    controls.update();
+
+    const currentWidth = container.clientWidth;
+    const currentHeight = container.clientHeight;
+
+    // Simulation Tool Animation
+    if (simMode && toolRef.current && geometry) {
+    const time = Date.now() * 0.002;
+    toolRef.current.position.x = Math.sin(time) * 2;
+    toolRef.current.position.z = Math.cos(time) * 2;
+
+    const isColliding = checkCollision(geometry, toolRef.current.position, 0.1);
+    if (Array.isArray(toolRef.current.material)) {
+       (toolRef.current.material[0] as THREE.MeshBasicMaterial).color.set(isColliding ? 0xff0000 : 0x00ff00);
+    } else {
+       (toolRef.current.material as THREE.MeshBasicMaterial).color.set(isColliding ? 0xff0000 : 0x00ff00);
+    }
+    }
+
+    if (composerRef.current) {
+    composerRef.current.render();
+    } else {
+    renderer.render(scene, camera);
+    }
+
+    // Render Gizmo
+    renderer.autoClear = false;
+    gizmoCamera.position.copy(camera.position);
+    gizmoCamera.position.setLength(150);
+    gizmoCamera.lookAt(0, 0, 0);
+
+    const v = renderer.getViewport(new THREE.Vector4());
+    renderer.setViewport(currentWidth - gizmoSize, 0, gizmoSize, gizmoSize);
+    renderer.render(gizmoScene, gizmoCamera);
+    renderer.setViewport(v);
+    renderer.autoClear = true;
     };
 
     animate();
 
     const handleResize = () => {
-      if (!container || !camera || !renderer) return;
-      const newWidth = container.clientWidth;
-      const newHeight = container.clientHeight;
-      camera.aspect = newWidth / newHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
+    if (!container || !camera || !renderer) return;
+    const newWidth = container.clientWidth;
+    const newHeight = container.clientHeight;
+    camera.aspect = newWidth / newHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(newWidth, newHeight);
+    if (composerRef.current) {
+    composerRef.current.setSize(newWidth, newHeight);
+    }
     };
 
     window.addEventListener('resize', handleResize);
@@ -227,6 +298,10 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
       scene.add(ghost);
       gizmo.attach(ghost);
 
+      if (outlinePassRef.current) {
+      outlinePassRef.current.selectedObjects = [ghost];
+      }
+
       const handleGizmoChange = () => {
         if (gizmo.object === ghost && onUpdateTransform) {
           onUpdateTransform({
@@ -243,9 +318,12 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
         gizmo.detach();
       };
     } else {
-      gizmo.detach();
+    gizmo.detach();
+    if (outlinePassRef.current) {
+    outlinePassRef.current.selectedObjects = [];
     }
-  }, [selectedNode, onUpdateTransform]);
+    }
+
 
   if (error) {
     return (
