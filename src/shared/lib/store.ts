@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { BoxParams, SphereParams, CylinderParams, TorusParams } from './cad';
+import { PDFArchaeologyResult } from './pdf-parser';
 
-export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion' | 'Union' | 'Subtract' | 'Intersect';
+export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion' | 'Union' | 'Subtract' | 'Intersect' | 'Fillet';
 export type OperationType = 'Add' | 'Subtract' | 'Intersect';
 
 export interface Transform {
@@ -10,12 +11,30 @@ export interface Transform {
   scale: [number, number, number];
 }
 
+export interface ExtrusionParams {
+  paths: number[][][];
+  height: number;
+}
+
+export interface FilletParams {
+  radius: number;
+}
+
+export type NodeParams =
+  | BoxParams
+  | SphereParams
+  | CylinderParams
+  | TorusParams
+  | ExtrusionParams
+  | FilletParams
+  | Record<string, never>;
+
 export interface CADNode {
   id: string;
   name: string;
   type: NodeType;
   operation: OperationType;
-  params: any;
+  params: NodeParams;
   transform: Transform;
   visible: boolean;
   material?: string;
@@ -24,6 +43,7 @@ export interface CADNode {
   cost?: number;
   leadTime?: string;
   partNumber?: string;
+  confidence?: number;
   children?: CADNode[];
 }
 
@@ -37,10 +57,12 @@ interface CADState {
   nodes: CADNode[];
   selectedNodeId: string | null;
   messages: AgentMessage[];
-  addNode: (type: NodeType, parentId?: string, initialParams?: any, initialTransform?: Partial<Transform>) => void;
+  archaeologyResult: PDFArchaeologyResult | null;
+  setArchaeologyResult: (result: PDFArchaeologyResult | null) => void;
+  addNode: (type: NodeType, parentId?: string, initialParams?: NodeParams, initialTransform?: Partial<Transform>) => void;
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
-  updateNodeParams: (id: string, params: any) => void;
+  updateNodeParams: (id: string, params: Partial<NodeParams>) => void;
   updateNodeTransform: (id: string, transform: Partial<Transform>) => void;
   selectNode: (id: string | null) => void;
   moveNode: (id: string, direction: 'up' | 'down') => void;
@@ -55,7 +77,7 @@ const getDefaultTransform = (): Transform => ({
   scale: [1, 1, 1],
 });
 
-const getDefaultParams = (type: NodeType) => {
+export const getDefaultParams = (type: NodeType): NodeParams => {
   switch (type) {
     case 'Box':
       return { width: 1, height: 1, depth: 1, center: true };
@@ -71,11 +93,15 @@ const getDefaultParams = (type: NodeType) => {
     case 'Intersect':
       return {};
     case 'Extrusion':
-      return { paths: [[[0,0],[10,0],[10,10],[0,10]]], height: 1 };
+      return { paths: [[[0, 0], [10, 0], [10, 10], [0, 10]]], height: 1 };
+    case 'Fillet':
+      return { radius: 0.1 };
+    default:
+      return {};
   }
 };
 
-const isContainer = (type: NodeType) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+const isContainer = (type: NodeType) => ['Group', 'Union', 'Subtract', 'Intersect', 'Fillet'].includes(type);
 
 export const useStore = create<CADState>((set) => ({
   nodes: [
@@ -93,6 +119,8 @@ export const useStore = create<CADState>((set) => ({
   messages: [
     { role: 'system', content: 'Oracle Core initialized. Awaiting design instructions.', agent: 'Orchestrator' }
   ],
+  archaeologyResult: null,
+  setArchaeologyResult: (result) => set({ archaeologyResult: result }),
   addNode: (type, parentId, initialParams, initialTransform) => {
     const id = Math.random().toString(36).substring(7);
     const newNode: CADNode = {
@@ -160,7 +188,7 @@ export const useStore = create<CADState>((set) => ({
     set((state) => {
       const updateRecursive = (nodes: CADNode[]): CADNode[] => {
         return nodes.map((n) => {
-          if (n.id === id) return { ...n, params: { ...n.params, ...params } };
+          if (n.id === id) return { ...n, params: { ...n.params, ...params } as NodeParams };
           if (n.children) return { ...n, children: updateRecursive(n.children) };
           return n;
         });

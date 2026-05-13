@@ -1,13 +1,5 @@
 import * as THREE from 'three';
-
-export interface MeshData {
-  numVert: number;
-  numTri: number;
-  vertPos: Float32Array;
-  vertNorm: Float32Array;
-  vertUV: Float32Array;
-  triVerts: Uint32Array;
-}
+import { MeshData } from '@/types/manifold';
 
 export function meshToBufferGeometry(mesh: MeshData): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();

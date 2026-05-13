@@ -1,7 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ManifoldInstance = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ManifoldConstructor = any;
+import {
+  ManifoldInstance,
+  ManifoldStatic,
+  MeshData,
+  CrossSectionInstance,
+  ManifoldModule
+} from '@/types/manifold';
+
+export type { MeshData };
 
 export interface BoxParams {
   width: number;
@@ -30,83 +35,126 @@ export interface TorusParams {
   tubularSegments?: number;
 }
 
-export interface MeshData {
-  numVert: number;
-  numTri: number;
-  vertPos: Float32Array;
-  vertNorm: Float32Array;
-  vertUV: Float32Array;
-  triVerts: Uint32Array;
-}
+export class ManifoldRegistry {
+  private resources = new Set<ManifoldInstance | CrossSectionInstance>();
 
-let manifoldConstructor: ManifoldConstructor | null = null;
-
-async function ensureManifold(): Promise<ManifoldConstructor> {
-  if (!manifoldConstructor) {
-    const module = await import('manifold-3d');
-    const instance = await module.default();
-    manifoldConstructor = instance.Manifold;
+  register<T extends ManifoldInstance | CrossSectionInstance>(resource: T): T {
+    this.resources.add(resource);
+    return resource;
   }
-  return manifoldConstructor;
+
+  unregister<T extends ManifoldInstance | CrossSectionInstance>(resource: T): void {
+    this.resources.delete(resource);
+  }
+
+  clear() {
+    this.resources.forEach(res => {
+      try {
+        res.delete();
+      } catch (e) {}
+    });
+    this.resources.clear();
+  }
 }
 
-export async function createBox(params: BoxParams): Promise<ManifoldInstance> {
-  const Manifold = await ensureManifold();
-  return Manifold.cube([params.width, params.height, params.depth], params.center);
+let manifoldPromise: Promise<ManifoldModule> | null = null;
+
+async function ensureManifold(): Promise<ManifoldModule> {
+  if (!manifoldPromise) {
+    manifoldPromise = (async () => {
+      const module = await import('manifold-3d');
+      const instance = await module.default();
+      return instance as unknown as ManifoldModule;
+    })();
+  }
+  return manifoldPromise;
 }
 
-export async function createCylinder(params: CylinderParams): Promise<ManifoldInstance> {
-  const Manifold = await ensureManifold();
+export async function createBox(params: BoxParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const { Manifold } = await ensureManifold();
+  const mesh = Manifold.cube([params.width, params.height, params.depth], params.center);
+  return registry ? registry.register(mesh) : mesh;
+}
+
+export async function filletMesh(mesh: ManifoldInstance, radius: number, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  // Manifold 2.x+ supports smoothing via the 'smooth' method or 'smoothOut'.
+  // For a general fillet simulation in the kernel:
+  try {
+    if ((mesh as any).smoothOut) {
+      const result = (mesh as any).smoothOut(radius);
+      return registry ? registry.register(result) : result;
+    }
+
+    if ((mesh as any).smooth) {
+      // Some versions use smooth() with a refinement level
+      const result = (mesh as any).smooth(3);
+      return registry ? registry.register(result) : result;
+    }
+  } catch (e) {
+    console.warn('Manifold fillet/smooth failed, falling back to original mesh', e);
+  }
+
+  return mesh;
+}
+
+export async function createCylinder(params: CylinderParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const { Manifold } = await ensureManifold();
   const { height, radiusLow, radiusHigh, segments, center } = params;
-  return Manifold.cylinder(height, radiusLow, radiusHigh, segments, center);
+  const mesh = Manifold.cylinder(height, radiusLow, radiusHigh, segments, center);
+  return registry ? registry.register(mesh) : mesh;
 }
 
-export async function createSphere(params: SphereParams): Promise<ManifoldInstance> {
-  const Manifold = await ensureManifold();
+export async function createSphere(params: SphereParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const { Manifold } = await ensureManifold();
   const { radius, segments } = params;
-  return Manifold.sphere(radius, segments);
+  const mesh = Manifold.sphere(radius, segments);
+  return registry ? registry.register(mesh) : mesh;
 }
 
-export async function createTorus(params: TorusParams): Promise<ManifoldInstance> {
-  const Manifold = await ensureManifold();
+export async function createTorus(params: TorusParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const { Manifold } = await ensureManifold();
   const { radius, tube, radialSegments, tubularSegments } = params;
-  return Manifold.torus(radius, tube, radialSegments, tubularSegments);
+  const mesh = Manifold.torus(radius, tube, radialSegments, tubularSegments);
+  return registry ? registry.register(mesh) : mesh;
 }
 
-export async function translateMesh(mesh: ManifoldInstance, vector: [number, number, number]): Promise<ManifoldInstance> {
-  return mesh.translate(vector);
+export async function translateMesh(mesh: ManifoldInstance, vector: [number, number, number], registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = mesh.translate(vector);
+  return registry ? registry.register(result) : result;
 }
 
-export async function rotateMesh(mesh: ManifoldInstance, angles: [number, number, number]): Promise<ManifoldInstance> {
-  // Manifold rotate takes angles in degrees for each axis
-  return mesh.rotate(angles);
+export async function rotateMesh(mesh: ManifoldInstance, angles: [number, number, number], registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = mesh.rotate(angles);
+  return registry ? registry.register(result) : result;
 }
 
-export async function scaleMesh(mesh: ManifoldInstance, factors: [number, number, number]): Promise<ManifoldInstance> {
-  return mesh.scale(factors);
+export async function scaleMesh(mesh: ManifoldInstance, factors: [number, number, number], registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = mesh.scale(factors);
+  return registry ? registry.register(result) : result;
 }
 
-export async function unionMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.add(meshB);
+export async function unionMesh(meshA: ManifoldInstance, meshB: ManifoldInstance, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = meshA.add(meshB);
+  return registry ? registry.register(result) : result;
 }
 
-export async function subtractMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.subtract(meshB);
+export async function subtractMesh(meshA: ManifoldInstance, meshB: ManifoldInstance, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = meshA.subtract(meshB);
+  return registry ? registry.register(result) : result;
 }
 
-export async function intersectMesh(meshA: ManifoldInstance, meshB: ManifoldInstance): Promise<ManifoldInstance> {
-  return meshA.intersect(meshB);
+export async function intersectMesh(meshA: ManifoldInstance, meshB: ManifoldInstance, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const result = meshA.intersect(meshB);
+  return registry ? registry.register(result) : result;
 }
 
-export async function extrude(paths: number[][][], height: number): Promise<ManifoldInstance> {
-  const module = await import('manifold-3d');
-  const instance = await module.default();
-  const CrossSection = instance.CrossSection;
-  const Manifold = instance.Manifold;
-
-  const section = new CrossSection(paths as any);
+export async function extrude(paths: number[][][], height: number, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  const { Manifold, CrossSection } = await ensureManifold();
+  const section = new CrossSection(paths);
+  if (registry) registry.register(section);
   const manifold = Manifold.extrude(section, height, 0, 0, [1, 1]);
-  section.delete();
+  if (registry) registry.register(manifold);
+  if (!registry) section.delete();
   return manifold;
 }
 
