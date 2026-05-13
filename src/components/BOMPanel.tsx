@@ -1,10 +1,33 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
+import { fetchVendorStatus, VendorData } from '@/lib/vendor-service';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function BOMPanel() {
   const nodes = useStore((state) => state.nodes);
+  const [vendorData, setVendorData] = useState<Record<string, VendorData>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    const refreshBOM = async () => {
+      setIsRefreshing(true);
+      const items = flattenNodes(nodes).filter(n => n.visible && n.type !== 'Group' && n.sku);
+      const newData: Record<string, VendorData> = {};
+      
+      for (const item of items) {
+        if (item.sku) {
+          const data = await fetchVendorStatus(item.sku);
+          newData[item.id] = data;
+        }
+      }
+      setVendorData(prev => ({ ...prev, ...newData }));
+      setIsRefreshing(false);
+    };
+
+    refreshBOM();
+  }, [nodes]);
 
   const materials = [
     { name: 'Aluminum 6061', density: 2.7, costPerKg: 5.5 },
@@ -76,9 +99,10 @@ export default function BOMPanel() {
       type: node.type,
       material: node.material || 'Aluminum 6061 (Default)',
       weight: weight.toFixed(3),
-      cost: typeof cost === 'number' ? cost.toFixed(2) : cost,
-      vendor: node.vendor || 'Generic',
-      leadTime: node.leadTime || 'Stock'
+      cost: vendorData[node.id]?.price?.toFixed(2) || (typeof cost === 'number' ? cost.toFixed(2) : cost),
+      vendor: vendorData[node.id]?.vendor || node.vendor || 'Generic',
+      leadTime: vendorData[node.id]?.leadTime || node.leadTime || 'Stock',
+      stock: vendorData[node.id]?.stock
     };
   });
 
@@ -86,46 +110,67 @@ export default function BOMPanel() {
   const totalWeight = bomItems.reduce((acc, item) => acc + parseFloat(item.weight), 0);
 
   return (
-    <div style={{
+    <motion.div 
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      style={{
       position: 'absolute',
       bottom: '20px',
       left: '20px',
       width: '400px',
-      background: 'rgba(22, 27, 34, 0.95)',
-      border: '1px solid #30363d',
-      borderRadius: '8px',
+      background: 'rgba(22, 27, 34, 0.9)',
+      backdropFilter: 'blur(12px)',
+      border: '1px solid rgba(240, 246, 252, 0.1)',
+      borderRadius: '12px',
       padding: '16px',
       color: '#c9d1d9',
       fontFamily: 'monospace',
       fontSize: '11px',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
       zIndex: 5,
-      maxHeight: '300px',
+      maxHeight: '400px',
       overflowY: 'auto'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #30363d', paddingBottom: '8px' }}>
-        <span style={{ color: '#58a6ff', fontWeight: 'bold' }}>SUPPLY-CHAIN SENTINEL // LIVE BOM</span>
-        <span style={{ color: '#8b949e' }}>{bomItems.length} ITEMS</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #30363d', paddingBottom: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRefreshing ? '#d29922' : '#3fb950', animation: isRefreshing ? 'pulse 1s infinite' : 'none' }} />
+          <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '0.5px' }}>SUPPLY-CHAIN SENTINEL</span>
+        </div>
+        <span style={{ color: '#8b949e', fontSize: '9px' }}>{bomItems.length} ACTIVE MANIFOLDS</span>
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ textAlign: 'left', color: '#8b949e' }}>
-            <th style={{ padding: '4px 0' }}>PART</th>
-            <th>VENDOR</th>
-            <th>STATUS</th>
-            <th style={{ textAlign: 'right' }}>USD</th>
+          <tr style={{ textAlign: 'left', color: '#8b949e', textTransform: 'uppercase', fontSize: '9px' }}>
+            <th style={{ padding: '8px 0' }}>Part Spec</th>
+            <th>Vendor</th>
+            <th>Availability</th>
+            <th style={{ textAlign: 'right' }}>Unit Cost</th>
           </tr>
         </thead>
         <tbody>
-          {bomItems.map((item) => (
-            <tr key={item.id} style={{ borderTop: '1px solid #21262d' }}>
-              <td style={{ padding: '6px 0' }}>{item.name}</td>
-              <td style={{ color: '#8b949e' }}>{item.vendor}</td>
-              <td style={{ color: item.leadTime === 'Stock' ? '#3fb950' : '#d29922' }}>{item.leadTime}</td>
-              <td style={{ textAlign: 'right', color: '#3fb950' }}>${item.cost}</td>
-            </tr>
-          ))}
+          <AnimatePresence>
+            {bomItems.map((item) => (
+              <motion.tr 
+                key={item.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ borderTop: '1px solid #21262d' }}
+              >
+                <td style={{ padding: '10px 0' }}>
+                  <div style={{ fontWeight: 'bold', color: '#f0f6fc' }}>{item.name}</div>
+                  <div style={{ fontSize: '9px', color: '#8b949e' }}>{item.type} | {item.material}</div>
+                </td>
+                <td style={{ color: '#8b949e' }}>{item.vendor}</td>
+                <td>
+                  <div style={{ color: item.leadTime === 'Stock' || item.leadTime === '2 days' ? '#3fb950' : '#d29922' }}>{item.leadTime}</div>
+                  {item.stock !== undefined && <div style={{ fontSize: '9px', opacity: 0.6 }}>{item.stock} in stock</div>}
+                </td>
+                <td style={{ textAlign: 'right', color: '#3fb950', fontWeight: 'bold' }}>${item.cost}</td>
+              </motion.tr>
+            ))}
+          </AnimatePresence>
         </tbody>
       </table>
 
@@ -136,6 +181,6 @@ export default function BOMPanel() {
           <div style={{ color: '#3fb950', fontSize: '14px' }}>${totalCost.toFixed(2)}</div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

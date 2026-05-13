@@ -17,18 +17,20 @@ export async function orchestrate(
 
   // Architect Agent
   await new Promise(r => setTimeout(r, 1000));
+  const nodeSummary = context.nodes.map(n => n.type).join(', ');
   onMessage({ 
     role: 'assistant', 
     agent: 'Architect', 
-    content: `Analyzed design constraints. Based on current ${context.nodes.length} nodes, recommending structural reinforcement of the base.` 
+    content: `Scanning topological structure: [${nodeSummary}]. I recommend a high-inertia luxury finish for this assembly. Proceeding with structural analysis...` 
   });
 
   // Engineer Agent
   await new Promise(r => setTimeout(r, 800));
+  const totalVolume = context.nodes.length * 10; // Mock calculation
   onMessage({ 
     role: 'assistant', 
     agent: 'Engineer', 
-    content: 'Calculated stress distribution. The current material choice supports the load, but I suggest increasing the fillet radius.' 
+    content: `FEA complete. Stress concentrations detected at junctions. Recommendation: Apply 2mm fillets to all subtracted boundaries to prevent crack propagation.` 
   });
 
   // Sourcing Agent
@@ -36,6 +38,6 @@ export async function orchestrate(
   onMessage({ 
     role: 'assistant', 
     agent: 'Sourcing', 
-    content: 'Found 3 matching vendors for the current BOM. McMaster-Carr has the best lead time (2 days).' 
+    content: 'Global inventory check: 6061 Aluminum is currently in stock at Xometry and Protolabs. Estimated cost for this build: $142.50 + shipping.' 
   });
 }

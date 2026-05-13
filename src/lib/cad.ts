@@ -104,7 +104,7 @@ export async function extrude(paths: number[][][], height: number): Promise<Mani
   const CrossSection = instance.CrossSection;
   const Manifold = instance.Manifold;
   
-  const section = new CrossSection(paths);
+  const section = new CrossSection(paths as any);
   const manifold = Manifold.extrude(section, height, 0, 0, [1, 1]);
   section.delete();
   return manifold;
