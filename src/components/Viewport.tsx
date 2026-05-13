@@ -94,7 +94,7 @@ export default function Viewport({ geometry }: ViewportProps) {
   }, []);
 
   useEffect(() => {
-    if (!sceneRef.current || !geometry) return;
+    if (!sceneRef.current) return;
 
     if (meshRef.current) {
       sceneRef.current.remove(meshRef.current);
@@ -104,7 +104,10 @@ export default function Viewport({ geometry }: ViewportProps) {
       } else {
         meshRef.current.material.dispose();
       }
+      meshRef.current = null;
     }
+
+    if (!geometry) return;
 
     const material = new THREE.MeshStandardMaterial({
       color: 0x4a90d9,
