@@ -1,11 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useStore, OperationType } from '@/shared/lib/store';
+import { fetchVendorStatus } from '@/shared/lib/vendor-service';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Package, Wrench, Database, Activity } from 'lucide-react';
 
 export default function Sidebar() {
-  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode } = useStore();
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode, addNode } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const findNodeRecursive = (nodes: any[], id: string | null): any => {
+    if (!id) return null;
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeRecursive(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const selectedNode = findNodeRecursive(nodes, selectedNodeId);
 
   const getOpIcon = (op: OperationType) => {
     switch (op) {
@@ -15,103 +31,153 @@ export default function Sidebar() {
     }
   };
 
+  const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+
+  const NodeItem = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => (
+    <div key={node.id} style={{ position: 'relative' }}>
+      {depth > 0 && (
+        <div style={{
+          position: 'absolute',
+          left: `${(depth - 1) * 12 + 6}px`,
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          background: '#30363d',
+          zIndex: 0
+        }} />
+      )}
+      <div
+        onClick={() => selectNode(node.id)}
+        style={{
+          padding: '8px 10px',
+          background: selectedNodeId === node.id ? '#21262d' : 'transparent',
+          border: `1px solid ${selectedNodeId === node.id ? '#58a6ff' : 'transparent'}`,
+          borderRadius: '6px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          opacity: node.visible ? 1 : 0.4,
+          marginLeft: `${depth * 12}px`,
+          position: 'relative',
+          zIndex: 1
+        }}
+      >
+        <span style={{ color: '#8b949e', width: '15px', fontSize: '9px' }}>{index}</span>
+        <span style={{
+          color: node.operation === 'Subtract' ? '#f85149' :
+                 node.operation === 'Intersect' ? '#d29922' : '#3fb950',
+          fontWeight: 'bold',
+          fontSize: '10px'
+        }}>
+          {getOpIcon(node.operation)}
+        </span>
+        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {node.name || node.type}
+        </span>
+
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {isContainer(node.type) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addNode('Box', node.id);
+              }}
+              title="Add Child"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#58a6ff', padding: '2px' }}
+            >
+              +
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              moveNode(node.id, 'up');
+            }}
+            title="Move Up"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            ↑
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              moveNode(node.id, 'down');
+            }}
+            title="Move Down"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            ↓
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateNode(node.id, { visible: !node.visible });
+            }}
+            title="Toggle Visibility"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            {node.visible ? '◎' : '◉'}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              removeNode(node.id);
+            }}
+            style={{ background: 'transparent', border: 'none', color: '#f85149', cursor: 'pointer', marginLeft: '4px' }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      {node.children && node.children.length > 0 && (
+        <div style={{ marginTop: '4px' }}>
+          {node.children.map((child: any, i: number) => (
+            <NodeItem key={child.id} node={child} index={i} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div
-      style={{
-        width: '320px',
-        background: '#0d1117',
-        borderLeft: '1px solid #30363d',
-        display: 'flex',
-        flexDirection: 'column',
-        color: '#c9d1d9',
-        fontFamily: 'monospace',
-        fontSize: '13px',
-      }}
+    <motion.div
+    initial={{ x: 300, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+    className="glassmorphism animate-luxury"
+    style={{
+    width: '320px',
+    display: 'flex',
+    flexDirection: 'column',
+    color: '#c9d1d9',
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    zIndex: 10,
+    }}
     >
-      {/* History Tree / Stratigraphy */}
+
       <div style={{ padding: '20px', borderBottom: '1px solid #30363d' }}>
         <h3 style={{ 
           margin: '0 0 16px 0', 
           fontSize: '11px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
+          <Database size={14} />
           Stratigraphy
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {nodes.map((node, index) => (
-            <div
-              key={node.id}
-              onClick={() => selectNode(node.id)}
-              style={{
-                padding: '8px 10px',
-                background: selectedNodeId === node.id ? '#21262d' : 'transparent',
-                border: `1px solid ${selectedNodeId === node.id ? '#58a6ff' : 'transparent'}`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                opacity: node.visible ? 1 : 0.4,
-              }}
-            >
-              <span style={{ color: '#8b949e', width: '15px' }}>{index}</span>
-              <span style={{ 
-                color: node.operation === 'Subtract' ? '#f85149' : 
-                       node.operation === 'Intersect' ? '#d29922' : '#3fb950',
-                fontWeight: 'bold',
-                fontSize: '10px'
-              }}>
-                {getOpIcon(node.operation)}
-              </span>
-              <span style={{ flex: 1 }}>{node.type}</span>
-              
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateNode(node.id, { visible: !node.visible });
-                  }}
-                  title="Toggle Visibility"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
-                >
-                  {node.visible ? '◎' : '◉'}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveNode(node.id, 'up');
-                  }}
-                  disabled={index === 0}
-                  style={{ background: 'transparent', border: 'none', cursor: index === 0 ? 'default' : 'pointer', color: '#8b949e' }}
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveNode(node.id, 'down');
-                  }}
-                  disabled={index === nodes.length - 1}
-                  style={{ background: 'transparent', border: 'none', cursor: index === nodes.length - 1 ? 'default' : 'pointer', color: '#8b949e' }}
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeNode(node.id);
-                  }}
-                  style={{ background: 'transparent', border: 'none', color: '#f85149', cursor: 'pointer', marginLeft: '4px' }}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
+            <NodeItem key={node.id} node={node} index={index} />
           ))}
         </div>
       </div>
+
 
       {/* Properties */}
       <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
@@ -120,12 +186,39 @@ export default function Sidebar() {
           fontSize: '11px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
+          <Wrench size={14} />
           Parameters
         </h3>
         {selectedNode ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Name */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>
+                Identity
+              </label>
+              <input
+                type="text"
+                value={selectedNode.name || ''}
+                onChange={(e) => updateNode(selectedNode.id, { name: e.target.value })}
+                style={{
+                  width: '100%',
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#c9d1d9',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  outline: 'none',
+                  fontFamily: 'monospace',
+                  fontSize: '12px'
+                }}
+              />
+            </div>
+
             {/* Operation Selector */}
             <div>
               <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>
@@ -201,6 +294,14 @@ export default function Sidebar() {
                   </div>
                 );
               }
+              if (key === 'paths') {
+                return (
+                  <div key={key}>
+                    <label style={{ color: '#8b949e', textTransform: 'uppercase', fontSize: '11px' }}>{key}</label>
+                    <div style={{ color: '#58a6ff', fontSize: '10px' }}>{JSON.stringify(value).substring(0, 50)}...</div>
+                  </div>
+                );
+              }
               return null;
             })}
 
@@ -219,7 +320,7 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.position[i]}
-                        step={0.1}
+                        step={0.001}
                         onChange={(e) => {
                           const newPos = [...selectedNode.transform.position] as [number, number, number];
                           newPos[i] = parseFloat(e.target.value) || 0;
@@ -241,7 +342,7 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.rotation[i]}
-                        step={1}
+                        step={0.01}
                         onChange={(e) => {
                           const newRot = [...selectedNode.transform.rotation] as [number, number, number];
                           newRot[i] = parseFloat(e.target.value) || 0;
@@ -263,11 +364,11 @@ export default function Sidebar() {
                       <input
                         type="number"
                         value={selectedNode.transform.scale[i]}
-                        step={0.1}
-                        min={0.1}
+                        step={0.001}
+                        min={0.001}
                         onChange={(e) => {
                           const newScale = [...selectedNode.transform.scale] as [number, number, number];
-                          newScale[i] = parseFloat(e.target.value) || 0.1;
+                          newScale[i] = parseFloat(e.target.value) || 0.001;
                           updateNodeTransform(selectedNode.id, { scale: newScale });
                         }}
                         style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#3fb950', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
@@ -280,10 +381,38 @@ export default function Sidebar() {
 
             {/* Phase 3: Metadata (Live BOM) */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Package size={12} />
                 Metadata (Supply-Chain Sentinel)
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>SKU / PART NUMBER</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={selectedNode.sku || ''}
+                      placeholder="e.g. MC-94459"
+                      onChange={(e) => updateNode(selectedNode.id, { sku: e.target.value })}
+                      style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', padding: '8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (selectedNode.sku) {
+                          const data = await fetchVendorStatus(selectedNode.sku);
+                          updateNode(selectedNode.id, {
+                            vendor: data.vendor,
+                            cost: data.price,
+                            leadTime: data.leadTime
+                          });
+                        }
+                      }}
+                      style={{ background: '#21262d', border: '1px solid #30363d', color: '#58a6ff', borderRadius: '6px', padding: '0 8px', cursor: 'pointer' }}
+                    >
+                      Sync
+                    </button>
+                  </div>
+                </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>MATERIAL</label>
                   <input
@@ -299,7 +428,8 @@ export default function Sidebar() {
 
             {/* Phase 4: Manufacturing Sim */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Activity size={12} />
                 GMS Twin (Manufacturing Sim)
               </label>
               <div style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
@@ -320,9 +450,26 @@ export default function Sidebar() {
 
             {/* Phase 2: PDF Archaeological Dig */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px', marginBottom: '40px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Database size={12} />
                 Digital Archaeology (PDF-to-CAD)
               </label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="application/pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const { parseDigitalArchaeology } = await import('@/shared/lib/pdf-parser');
+                    const result = await parseDigitalArchaeology(file);
+                    result.paths.forEach(p => {
+                      addNode('Extrusion', undefined, { paths: [p.points], height: 1 });
+                    });
+                  }
+                }}
+              />
               <div 
                 style={{ 
                   border: '1px dashed #30363d', 
@@ -332,6 +479,7 @@ export default function Sidebar() {
                   cursor: 'pointer',
                   transition: 'border-color 0.2s'
                 }}
+                onClick={() => fileInputRef.current?.click()}
                 onMouseOver={(e) => e.currentTarget.style.borderColor = '#58a6ff'}
                 onMouseOut={(e) => e.currentTarget.style.borderColor = '#30363d'}
               >
@@ -355,6 +503,6 @@ export default function Sidebar() {
       }}>
         AETHER CAD v0.1.0-alpha
       </div>
-    </div>
+    </motion.div>
   );
 }

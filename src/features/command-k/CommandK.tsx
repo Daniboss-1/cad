@@ -2,19 +2,61 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore, NodeType } from '@/shared/lib/store';
+import { parseIntent, Intent } from '@/shared/lib/oracle';
+import { OracleCore } from '@/shared/lib/oracle-core';
 
 export default function CommandK() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const addNode = useStore((state) => state.addNode);
+  const [suggestedIntent, setSuggestedIntent] = useState<Intent | null>(null);
+  const { addNode, addMessage, messages } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (search.length > 2) {
+      setSuggestedIntent(parseIntent(search));
+    } else {
+      setSuggestedIntent(null);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
 
   const options: { label: string; value: NodeType | 'Oracle'; description: string }[] = [
     { label: 'Box', value: 'Box', description: 'Rectilinear volume excavation' },
     { label: 'Sphere', value: 'Sphere', description: 'Perfect orbital curvature' },
     { label: 'Cylinder', value: 'Cylinder', description: 'Extruded circular profile' },
     { label: 'Torus', value: 'Torus', description: 'Cyclic manifold ring' },
+    { label: 'Group', value: 'Group', description: 'Composite collection' },
+    { label: 'Union', value: 'Union', description: 'Boolean additive merge' },
+    { label: 'Subtract', value: 'Subtract', description: 'Boolean subtractive carve' },
+    { label: 'Intersect', value: 'Intersect', description: 'Boolean intersection focus' },
     { label: 'Oracle', value: 'Oracle', description: 'Generative Multi-agent Orchestration' },
   ];
 
@@ -25,31 +67,37 @@ export default function CommandK() {
   const [oracleResponse, setOracleResponse] = useState<string | null>(null);
   const [isOracleProcessing, setIsOracleProcessing] = useState(false);
 
-  const handleSelect = async (type: NodeType | 'Oracle') => {
-    if (type === 'Oracle') {
-      setIsOracleProcessing(true);
-      setOracleResponse('Oracle is consulting the Manifold spirits...');
-      
-      // Simulate Oracle Core Processing
-      setTimeout(() => {
-        setOracleResponse('PROMPT RECEIVED: "Create a 5x5 plate with a hole in the center"');
-        setTimeout(() => {
-          addNode('Box');
-          // In a real implementation, we'd update params here too
-          setOracleResponse('ORACLE: Form manifested. Adjusting stratigraphy...');
-          setTimeout(() => {
-            setOpen(false);
-            setOracleResponse(null);
-            setIsOracleProcessing(false);
-          }, 1500);
-        }, 1000);
-      }, 1500);
+  const handleSelect = async (type: NodeType | 'Oracle', intent?: Intent | null) => {
+    if (intent && intent.type === 'ADD_NODE' && intent.nodeType) {
+      addNode(intent.nodeType, undefined, intent.params, intent.transform);
+      setOpen(false);
+      setSearch('');
       return;
     }
-    addNode(type);
+
+    if (type === 'Oracle' || (filteredOptions.length === 0 && search.length > 0)) {
+      setIsOracleProcessing(true);
+      addMessage({ role: 'user', content: search });
+      const oracle = OracleCore.getInstance();
+      const responses = await oracle.processNaturalLanguage(search);
+
+      for (const res of responses) {
+        await new Promise(r => setTimeout(r, 600)); // Simulate thinking
+        addMessage({ role: 'assistant', agent: res.agent, content: res.content });
+        if (res.action) res.action();
+      }
+
+      setIsOracleProcessing(false);
+      setSearch('');
+      return;
+    }
+
+    addNode(type as NodeType);
     setOpen(false);
     setSearch('');
   };
+
+  if (!open) return null;
 
   return (
     <div
@@ -59,8 +107,8 @@ export default function CommandK() {
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(13, 17, 23, 0.8)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(13, 17, 23, 0.4)',
+        backdropFilter: 'blur(8px)',
         zIndex: 1000,
         display: 'flex',
         justifyContent: 'center',
@@ -70,10 +118,9 @@ export default function CommandK() {
       onClick={() => setOpen(false)}
     >
       <div
+        className="glassmorphism animate-luxury"
         style={{
           width: '600px',
-          background: '#161b22',
-          border: '1px solid #30363d',
           borderRadius: '12px',
           padding: '12px',
           boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
@@ -91,6 +138,23 @@ export default function CommandK() {
               setSearch(e.target.value);
               setSelectedIndex(0);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (suggestedIntent && suggestedIntent.type === 'ADD_NODE') {
+                  handleSelect('Oracle', suggestedIntent);
+                } else if (filteredOptions[selectedIndex]) {
+                  handleSelect(filteredOptions[selectedIndex].value);
+                } else if (search.length > 0) {
+                  handleSelect('Oracle');
+                }
+              }
+              if (e.key === 'ArrowDown') {
+                setSelectedIndex((s) => (s + 1) % Math.max(1, filteredOptions.length));
+              }
+              if (e.key === 'ArrowUp') {
+                setSelectedIndex((s) => (s - 1 + filteredOptions.length) % Math.max(1, filteredOptions.length));
+              }
+            }}
             style={{
               width: '100%',
               background: 'transparent',
@@ -103,7 +167,45 @@ export default function CommandK() {
             }}
           />
         </div>
-        <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+        <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{
+              padding: '8px 12px',
+              background: msg.role === 'user' ? '#0d1117' : '#1f242c',
+              borderRadius: '6px',
+              borderLeft: `3px solid ${msg.role === 'user' ? '#8b949e' : (msg.agent === 'Architect' ? '#58a6ff' : (msg.agent === 'Engineer' ? '#3fb950' : '#d29922'))}`
+            }}>
+              <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '4px', fontWeight: 'bold' }}>
+                {msg.agent || msg.role.toUpperCase()}
+              </div>
+              <div style={{ fontSize: '12px', color: '#c9d1d9' }}>{msg.content}</div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+
+          {suggestedIntent && suggestedIntent.type !== 'UNKNOWN' && !isOracleProcessing && (
+            <div
+              onClick={() => handleSelect('Oracle', suggestedIntent)}
+              style={{
+                padding: '12px 16px',
+                cursor: 'pointer',
+                color: '#fff',
+                background: '#238636',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                border: '1px solid #2ea043'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', opacity: 0.8 }}>SUGGESTED ACTION</span>
+                <span style={{ fontSize: '10px' }}>↵ ENTER TO EXECUTE</span>
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{suggestedIntent.message}</span>
+            </div>
+          )}
           {isOracleProcessing ? (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
               <div style={{ color: '#58a6ff', fontSize: '12px', marginBottom: '10px', animation: 'pulse 2s infinite' }}>{oracleResponse}</div>
@@ -116,17 +218,6 @@ export default function CommandK() {
                   animation: 'shimmer 1.5s infinite linear'
                 }} />
               </div>
-              <style>{`
-                @keyframes shimmer {
-                  0% { left: -40%; }
-                  100% { left: 100%; }
-                }
-                @keyframes pulse {
-                  0% { opacity: 0.5; }
-                  50% { opacity: 1; }
-                  100% { opacity: 0.5; }
-                }
-              `}</style>
             </div>
           ) : (
             filteredOptions.map((o, index) => (
@@ -156,7 +247,7 @@ export default function CommandK() {
               </div>
             ))
           )}
-          {!isOracleProcessing && filteredOptions.length === 0 && (
+          {!isOracleProcessing && filteredOptions.length === 0 && !suggestedIntent && (
             <div style={{ padding: '20px', color: '#484f58', textAlign: 'center', fontSize: '12px' }}>
               NO PRIMITIVES MATCH YOUR SEARCH
             </div>
