@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { BoxParams, SphereParams, CylinderParams, TorusParams } from './cad';
+import { PDFArchaeologyResult } from './pdf-parser';
 
-export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion' | 'Union' | 'Subtract' | 'Intersect';
+export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion' | 'Union' | 'Subtract' | 'Intersect' | 'Fillet';
 export type OperationType = 'Add' | 'Subtract' | 'Intersect';
 
 export interface Transform {
@@ -15,12 +16,17 @@ export interface ExtrusionParams {
   height: number;
 }
 
+export interface FilletParams {
+  radius: number;
+}
+
 export type NodeParams = 
   | BoxParams 
   | SphereParams 
   | CylinderParams 
   | TorusParams 
   | ExtrusionParams 
+  | FilletParams
   | Record<string, never>;
 
 export interface CADNode {
@@ -37,6 +43,7 @@ export interface CADNode {
   cost?: number;
   leadTime?: string;
   partNumber?: string;
+  confidence?: number;
   children?: CADNode[];
 }
 
@@ -50,6 +57,8 @@ interface CADState {
   nodes: CADNode[];
   selectedNodeId: string | null;
   messages: AgentMessage[];
+  archaeologyResult: PDFArchaeologyResult | null;
+  setArchaeologyResult: (result: PDFArchaeologyResult | null) => void;
   addNode: (type: NodeType, parentId?: string, initialParams?: NodeParams, initialTransform?: Partial<Transform>) => void;
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
@@ -85,12 +94,14 @@ export const getDefaultParams = (type: NodeType): NodeParams => {
       return {};
     case 'Extrusion':
       return { paths: [[[0, 0], [10, 0], [10, 10], [0, 10]]], height: 1 };
+    case 'Fillet':
+      return { radius: 0.1 };
     default:
       return {};
   }
 };
 
-const isContainer = (type: NodeType) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+const isContainer = (type: NodeType) => ['Group', 'Union', 'Subtract', 'Intersect', 'Fillet'].includes(type);
 
 export const useStore = create<CADState>((set) => ({
   nodes: [
@@ -108,6 +119,8 @@ export const useStore = create<CADState>((set) => ({
   messages: [
     { role: 'system', content: 'Oracle Core initialized. Awaiting design instructions.', agent: 'Orchestrator' }
   ],
+  archaeologyResult: null,
+  setArchaeologyResult: (result) => set({ archaeologyResult: result }),
   addNode: (type, parentId, initialParams, initialTransform) => {
     const id = Math.random().toString(36).substring(7);
     const newNode: CADNode = {

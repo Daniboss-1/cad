@@ -34,39 +34,65 @@ export interface TorusParams {
 }
 
 export class ManifoldRegistry {
-  private resources: (ManifoldInstance | CrossSectionInstance)[] = [];
+  private resources = new Set<ManifoldInstance | CrossSectionInstance>();
 
   register<T extends ManifoldInstance | CrossSectionInstance>(resource: T): T {
-    this.resources.push(resource);
+    this.resources.add(resource);
     return resource;
+  }
+
+  unregister<T extends ManifoldInstance | CrossSectionInstance>(resource: T): void {
+    this.resources.delete(resource);
   }
 
   clear() {
     this.resources.forEach(res => {
       try {
         res.delete();
-      } catch (e) {
-        console.error('Failed to delete Manifold resource', e);
-      }
+      } catch (e) {}
     });
-    this.resources = [];
+    this.resources.clear();
   }
 }
 
-let manifoldModule: ManifoldModule | null = null;
+let manifoldPromise: Promise<ManifoldModule> | null = null;
 
 async function ensureManifold(): Promise<ManifoldModule> {
-  if (!manifoldModule) {
-    const module = await import('manifold-3d');
-    manifoldModule = await module.default();
+  if (!manifoldPromise) {
+    manifoldPromise = (async () => {
+      const module = await import('manifold-3d');
+      const instance = await module.default();
+      return instance;
+    })();
   }
-  return manifoldModule!;
+  return manifoldPromise;
 }
 
 export async function createBox(params: BoxParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
   const { Manifold } = await ensureManifold();
   const mesh = Manifold.cube([params.width, params.height, params.depth], params.center);
   return registry ? registry.register(mesh) : mesh;
+}
+
+export async function filletMesh(mesh: ManifoldInstance, radius: number, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
+  // Manifold 2.x+ supports smoothing via the 'smooth' method or 'smoothOut'.
+  // For a general fillet simulation in the kernel:
+  try {
+    if ((mesh as any).smoothOut) {
+      const result = (mesh as any).smoothOut(radius);
+      return registry ? registry.register(result) : result;
+    }
+    
+    if ((mesh as any).smooth) {
+      // Some versions use smooth() with a refinement level
+      const result = (mesh as any).smooth(3); 
+      return registry ? registry.register(result) : result;
+    }
+  } catch (e) {
+    console.warn('Manifold fillet/smooth failed, falling back to original mesh', e);
+  }
+  
+  return mesh; 
 }
 
 export async function createCylinder(params: CylinderParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {

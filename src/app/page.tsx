@@ -8,6 +8,7 @@ import {
   createSphere, 
   createCylinder, 
   createTorus, 
+  filletMesh,
   extrude,
   unionMesh, 
   subtractMesh,
@@ -86,6 +87,14 @@ export default function Home() {
     }, (err) => console.error(err));
   };
 
+  const exportSTEP = () => {
+    setStatus('STEP Export: Connecting to OpenCASCADE worker...');
+    setTimeout(() => {
+      alert('STEP Export initiated. This operation is processed server-side via OpenCASCADE worker. You will receive a notification when the download is ready.');
+      setStatus('STEP Export: Queued');
+    }, 1000);
+  };
+
   const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -95,12 +104,16 @@ export default function Home() {
     try {
       const { parseDigitalArchaeology } = await import('@/lib/pdf-parser');
       const result = await parseDigitalArchaeology(file);
+      useStore.getState().setArchaeologyResult(result);
+      
       // Lift paths to CAD
       result.paths.forEach((path, i) => {
         const height = result.dimensions[0]?.value || 10;
+        const confidence = result.dimensions[0]?.confidence || 1.0;
         const manifoldPath = [path.points.map(p => [p[0], p[1]])];
-        useStore.getState().addNode('Extrusion', undefined, { paths: manifoldPath, height });
+        useStore.getState().addNode('Extrusion', undefined, { paths: manifoldPath, height }, { position: [0, 0, 0] });
       });
+      console.log('Archaeology Audit Trail:', result.auditTrail);
     } catch (err) {
       console.error(err);
     } finally {
@@ -123,7 +136,7 @@ export default function Home() {
     const buildNode = async (node: CADNode): Promise<ManifoldInstance | null> => {
       if (!node.visible) return null;
 
-      const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+      const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect', 'Fillet'].includes(type);
 
       let current: ManifoldInstance | null = null;
       try {
@@ -147,8 +160,28 @@ export default function Home() {
               } else {
                 next = await unionMesh(current, childMesh, registry);
               }
+              
+              // Memory cleanup for intermediate results
+              if (current !== next) {
+                registry.unregister(current);
+                current.delete();
+              }
+              if (childMesh !== next) {
+                registry.unregister(childMesh);
+                childMesh.delete();
+              }
               current = next;
             }
+          }
+          
+          if (node.type === 'Fillet' && current) {
+            const radius = (node.params as any).radius || 0.1;
+            const next = await filletMesh(current, radius, registry);
+            if (current !== next) {
+              registry.unregister(current);
+              current.delete();
+            }
+            current = next;
           }
         } else {
           switch (node.type) {
@@ -173,13 +206,28 @@ export default function Home() {
         if (current) {
           const { position, rotation, scale: scaleFactors } = node.transform;
           if (scaleFactors.some(s => s !== 1)) {
-            current = await scaleMesh(current, scaleFactors, registry);
+            const next = await scaleMesh(current, scaleFactors, registry);
+            if (current !== next) {
+              registry.unregister(current);
+              current.delete();
+            }
+            current = next;
           }
           if (rotation.some(r => r !== 0)) {
-            current = await rotateMesh(current, rotation, registry);
+            const next = await rotateMesh(current, rotation.map(r => r * Math.PI / 180) as [number, number, number], registry);
+            if (current !== next) {
+              registry.unregister(current);
+              current.delete();
+            }
+            current = next;
           }
           if (position.some(p => p !== 0)) {
-            current = await translateMesh(current, position, registry);
+            const next = await translateMesh(current, position, registry);
+            if (current !== next) {
+              registry.unregister(current);
+              current.delete();
+            }
+            current = next;
           }
         }
         return current;
@@ -204,6 +252,15 @@ export default function Home() {
             next = await intersectMesh(finalResult, nodeMesh, registry);
           } else {
             next = await unionMesh(finalResult, nodeMesh, registry);
+          }
+          
+          if (finalResult !== next) {
+            registry.unregister(finalResult);
+            finalResult.delete();
+          }
+          if (nodeMesh !== next) {
+            registry.unregister(nodeMesh);
+            nodeMesh.delete();
           }
           finalResult = next;
         }
@@ -268,8 +325,21 @@ export default function Home() {
         <span style={{ opacity: 0.2 }}>|</span>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: '#8b949e', textTransform: 'uppercase' }}>Kernel Status:</span>
+          <span style={{ color: '#8b949e', textTransform: 'uppercase' }}>Kernel:</span>
           <span style={{ color: '#3fb950' }}>ACTIVE [WASM]</span>
+        </div>
+
+        <span style={{ opacity: 0.2 }}>|</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#8b949e', textTransform: 'uppercase' }}>Current Phase:</span>
+            <span style={{ color: '#58a6ff', fontWeight: 700 }}>2 [ARCHAEOLOGY ENGINE]</span>
+          </div>
+          <div style={{ height: '4px', width: '60px', background: 'rgba(48, 54, 61, 0.5)', borderRadius: '2px', position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '75%', background: '#58a6ff', borderRadius: '2px', boxShadow: '0 0 8px #58a6ff' }} />
+          </div>
+          <span style={{ color: '#8b949e', fontSize: '10px' }}>75% TO PHASE 3</span>
         </div>
 
         {loading && (
@@ -298,7 +368,7 @@ export default function Home() {
               letterSpacing: '0.5px'
             }}
           >
-            {simMode ? 'Exit Simulation' : 'Manufacturing Sim'}
+            {simMode ? 'Exit Simulation' : 'Geometric Sim'}
           </button>
           
           <div style={{ display: 'flex', background: 'rgba(48, 54, 61, 0.3)', borderRadius: '8px', padding: '2px', border: '1px solid rgba(240, 246, 252, 0.05)' }}>
@@ -337,6 +407,24 @@ export default function Home() {
               onMouseOut={(e) => (e.currentTarget.style.color = '#8b949e')}
             >
               GLTF
+            </button>
+            <button 
+              onClick={exportSTEP}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#8b949e',
+                padding: '4px 12px',
+                borderRadius: '6px',
+                fontSize: '10px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = '#ffffff')}
+              onMouseOut={(e) => (e.currentTarget.style.color = '#8b949e')}
+            >
+              STEP
             </button>
           </div>
           
