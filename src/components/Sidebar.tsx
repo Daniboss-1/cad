@@ -29,6 +29,8 @@ export default function Sidebar() {
     }
   };
 
+  const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+
   const NodeItem = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => (
     <div key={node.id}>
       <div
@@ -46,7 +48,7 @@ export default function Sidebar() {
           marginLeft: `${depth * 12}px`,
         }}
       >
-        <span style={{ color: '#8b949e', width: '15px' }}>{index}</span>
+        <span style={{ color: '#8b949e', width: '15px', fontSize: '9px' }}>{index}</span>
         <span style={{ 
           color: node.operation === 'Subtract' ? '#f85149' : 
                  node.operation === 'Intersect' ? '#d29922' : '#3fb950',
@@ -55,10 +57,12 @@ export default function Sidebar() {
         }}>
           {getOpIcon(node.operation)}
         </span>
-        <span style={{ flex: 1 }}>{node.type}</span>
+        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {node.name || node.type}
+        </span>
         
         <div style={{ display: 'flex', gap: '4px' }}>
-          {node.type === 'Group' && (
+          {isContainer(node.type) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -70,6 +74,26 @@ export default function Sidebar() {
               +
             </button>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              moveNode(node.id, 'up');
+            }}
+            title="Move Up"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            ↑
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              moveNode(node.id, 'down');
+            }}
+            title="Move Down"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            ↓
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -146,6 +170,29 @@ export default function Sidebar() {
         </h3>
         {selectedNode ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Name */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>
+                Identity
+              </label>
+              <input
+                type="text"
+                value={selectedNode.name || ''}
+                onChange={(e) => updateNode(selectedNode.id, { name: e.target.value })}
+                style={{
+                  width: '100%',
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  color: '#c9d1d9',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  outline: 'none',
+                  fontFamily: 'monospace',
+                  fontSize: '12px'
+                }}
+              />
+            </div>
+
             {/* Operation Selector */}
             <div>
               <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase' }}>

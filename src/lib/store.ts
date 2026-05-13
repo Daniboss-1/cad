@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { BoxParams, SphereParams, CylinderParams, TorusParams } from './cad';
 
-export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion';
+export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus' | 'Group' | 'Extrusion' | 'Union' | 'Subtract' | 'Intersect';
 export type OperationType = 'Add' | 'Subtract' | 'Intersect';
 
 export interface Transform {
@@ -12,6 +12,7 @@ export interface Transform {
 
 export interface CADNode {
   id: string;
+  name: string;
   type: NodeType;
   operation: OperationType;
   params: any;
@@ -25,7 +26,7 @@ export interface CADNode {
 interface CADState {
   nodes: CADNode[];
   selectedNodeId: string | null;
-  addNode: (type: NodeType, parentId?: string, initialParams?: any) => void;
+  addNode: (type: NodeType, parentId?: string, initialParams?: any, initialTransform?: Partial<Transform>) => void;
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
   updateNodeParams: (id: string, params: any) => void;
@@ -33,6 +34,7 @@ interface CADState {
   selectNode: (id: string | null) => void;
   moveNode: (id: string, direction: 'up' | 'down') => void;
   reorderNodes: (nodes: CADNode[]) => void;
+  groupNodes: (ids: string[], groupName?: string) => void;
 }
 
 const getDefaultTransform = (): Transform => ({
@@ -52,16 +54,22 @@ const getDefaultParams = (type: NodeType) => {
     case 'Torus':
       return { radius: 1, tube: 0.3, radialSegments: 32, tubularSegments: 32 };
     case 'Group':
+    case 'Union':
+    case 'Subtract':
+    case 'Intersect':
       return {};
     case 'Extrusion':
       return { paths: [[[0,0],[10,0],[10,10],[0,10]]], height: 1 };
   }
 };
 
+const isContainer = (type: NodeType) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+
 export const useStore = create<CADState>((set) => ({
   nodes: [
     {
       id: 'default-box',
+      name: 'Initial Box',
       type: 'Box',
       operation: 'Add',
       params: getDefaultParams('Box'),
@@ -70,15 +78,17 @@ export const useStore = create<CADState>((set) => ({
     },
   ],
   selectedNodeId: 'default-box',
-  addNode: (type, parentId, initialParams) => {
+  addNode: (type, parentId, initialParams, initialTransform) => {
+    const id = Math.random().toString(36).substring(7);
     const newNode: CADNode = {
-      id: Math.random().toString(36).substring(7),
+      id,
+      name: `${type} ${id}`,
       type,
       operation: 'Add',
       params: initialParams || getDefaultParams(type),
-      transform: getDefaultTransform(),
+      transform: { ...getDefaultTransform(), ...initialTransform },
       visible: true,
-      children: type === 'Group' ? [] : undefined,
+      children: isContainer(type) ? [] : undefined,
     };
     set((state) => {
       if (!parentId) {
@@ -157,15 +167,53 @@ export const useStore = create<CADState>((set) => ({
   selectNode: (id) => set({ selectedNodeId: id }),
   moveNode: (id, direction) =>
     set((state) => {
-      const index = state.nodes.findIndex((n) => n.id === id);
-      if (index === -1) return state;
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= state.nodes.length) return state;
-
-      const newNodes = [...state.nodes];
-      const [movedNode] = newNodes.splice(index, 1);
-      newNodes.splice(newIndex, 0, movedNode);
-      return { nodes: newNodes };
+      const moveInList = (nodes: CADNode[]): CADNode[] => {
+        const index = nodes.findIndex((n) => n.id === id);
+        if (index !== -1) {
+          const newIndex = direction === 'up' ? index - 1 : index + 1;
+          if (newIndex >= 0 && newIndex < nodes.length) {
+            const nextNodes = [...nodes];
+            const [moved] = nextNodes.splice(index, 1);
+            nextNodes.splice(newIndex, 0, moved);
+            return nextNodes;
+          }
+          return nodes;
+        }
+        return nodes.map(n => n.children ? { ...n, children: moveInList(n.children) } : n);
+      };
+      return { nodes: moveInList(state.nodes) };
     }),
   reorderNodes: (nodes) => set({ nodes }),
+  groupNodes: (ids, groupName) => set((state) => {
+    const selectedNodes: CADNode[] = [];
+    const findAndRemove = (nodes: CADNode[]): CADNode[] => {
+      return nodes.filter(n => {
+        if (ids.includes(n.id)) {
+          selectedNodes.push(n);
+          return false;
+        }
+        return true;
+      }).map(n => n.children ? { ...n, children: findAndRemove(n.children) } : n);
+    };
+
+    const newNodes = findAndRemove(state.nodes);
+    if (selectedNodes.length === 0) return { nodes: newNodes };
+
+    const groupId = Math.random().toString(36).substring(7);
+    const groupNode: CADNode = {
+      id: groupId,
+      name: groupName || `Group ${groupId}`,
+      type: 'Group',
+      operation: 'Add',
+      params: {},
+      transform: getDefaultTransform(),
+      visible: true,
+      children: selectedNodes,
+    };
+
+    return { 
+      nodes: [...newNodes, groupNode],
+      selectedNodeId: groupId
+    };
+  })
 }));

@@ -3,13 +3,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore, NodeType } from '@/lib/store';
 import { oracle } from '@/lib/oracle-core';
+import { parseIntent, Intent } from '@/lib/oracle';
 
 export default function CommandK() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [suggestedIntent, setSuggestedIntent] = useState<Intent | null>(null);
   const { addNode, updateNode, updateNodeParams } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (search.length > 2) {
+      setSuggestedIntent(parseIntent(search));
+    } else {
+      setSuggestedIntent(null);
+    }
+  }, [search]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,6 +47,9 @@ export default function CommandK() {
     { label: 'Cylinder', value: 'Cylinder', description: 'Extruded circular profile' },
     { label: 'Torus', value: 'Torus', description: 'Cyclic manifold ring' },
     { label: 'Group', value: 'Group', description: 'Composite collection' },
+    { label: 'Union', value: 'Union', description: 'Boolean additive merge' },
+    { label: 'Subtract', value: 'Subtract', description: 'Boolean subtractive carve' },
+    { label: 'Intersect', value: 'Intersect', description: 'Boolean intersection focus' },
     { label: 'Oracle', value: 'Oracle', description: 'Generative Multi-agent Orchestration' },
   ];
 
@@ -47,7 +60,14 @@ export default function CommandK() {
   const [oracleResponse, setOracleResponse] = useState<string | null>(null);
   const [isOracleProcessing, setIsOracleProcessing] = useState(false);
 
-  const handleSelect = async (type: NodeType | 'Oracle') => {
+  const handleSelect = async (type: NodeType | 'Oracle', intent?: Intent | null) => {
+    if (intent && intent.type === 'ADD_NODE' && intent.nodeType) {
+      addNode(intent.nodeType, undefined, intent.params, intent.transform);
+      setOpen(false);
+      setSearch('');
+      return;
+    }
+
     if (type === 'Oracle' || (filteredOptions.length === 0 && search.length > 0)) {
       setIsOracleProcessing(true);
       setOracleResponse('CONSULTING ORACLE CORE...');
@@ -120,7 +140,9 @@ export default function CommandK() {
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                if (filteredOptions[selectedIndex]) {
+                if (suggestedIntent && suggestedIntent.type === 'ADD_NODE') {
+                  handleSelect('Oracle', suggestedIntent);
+                } else if (filteredOptions[selectedIndex]) {
                   handleSelect(filteredOptions[selectedIndex].value);
                 } else if (search.length > 0) {
                   handleSelect('Oracle');
@@ -146,6 +168,29 @@ export default function CommandK() {
           />
         </div>
         <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+          {suggestedIntent && suggestedIntent.type !== 'UNKNOWN' && !isOracleProcessing && (
+            <div
+              onClick={() => handleSelect('Oracle', suggestedIntent)}
+              style={{
+                padding: '12px 16px',
+                cursor: 'pointer',
+                color: '#fff',
+                background: '#238636',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                border: '1px solid #2ea043'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', opacity: 0.8 }}>SUGGESTED ACTION</span>
+                <span style={{ fontSize: '10px' }}>↵ ENTER TO EXECUTE</span>
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{suggestedIntent.message}</span>
+            </div>
+          )}
           {isOracleProcessing ? (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
               <div style={{ color: '#58a6ff', fontSize: '12px', marginBottom: '10px', animation: 'pulse 2s infinite' }}>{oracleResponse}</div>
@@ -198,7 +243,7 @@ export default function CommandK() {
               </div>
             ))
           )}
-          {!isOracleProcessing && filteredOptions.length === 0 && (
+          {!isOracleProcessing && filteredOptions.length === 0 && !suggestedIntent && (
             <div style={{ padding: '20px', color: '#484f58', textAlign: 'center', fontSize: '12px' }}>
               NO PRIMITIVES MATCH YOUR SEARCH
             </div>
