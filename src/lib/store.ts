@@ -4,12 +4,21 @@ import { BoxParams, SphereParams, CylinderParams, TorusParams } from './cad';
 export type NodeType = 'Box' | 'Sphere' | 'Cylinder' | 'Torus';
 export type OperationType = 'Add' | 'Subtract' | 'Intersect';
 
+export interface Transform {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+}
+
 export interface CADNode {
   id: string;
   type: NodeType;
   operation: OperationType;
   params: BoxParams | SphereParams | CylinderParams | TorusParams;
+  transform: Transform;
   visible: boolean;
+  material?: string;
+  partNumber?: string;
 }
 
 interface CADState {
@@ -19,10 +28,17 @@ interface CADState {
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
   updateNodeParams: (id: string, params: any) => void;
+  updateNodeTransform: (id: string, transform: Partial<Transform>) => void;
   selectNode: (id: string | null) => void;
   moveNode: (id: string, direction: 'up' | 'down') => void;
   reorderNodes: (nodes: CADNode[]) => void;
 }
+
+const getDefaultTransform = (): Transform => ({
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+});
 
 const getDefaultParams = (type: NodeType) => {
   switch (type) {
@@ -44,6 +60,7 @@ export const useStore = create<CADState>((set) => ({
       type: 'Box',
       operation: 'Add',
       params: getDefaultParams('Box'),
+      transform: getDefaultTransform(),
       visible: true,
     },
   ],
@@ -54,6 +71,7 @@ export const useStore = create<CADState>((set) => ({
       type,
       operation: 'Add',
       params: getDefaultParams(type),
+      transform: getDefaultTransform(),
       visible: true,
     };
     set((state) => ({
@@ -76,6 +94,12 @@ export const useStore = create<CADState>((set) => ({
     set((state) => ({
       nodes: state.nodes.map((n) =>
         n.id === id ? { ...n, params: { ...n.params, ...params } } : n
+      ),
+    })),
+  updateNodeTransform: (id, transform) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) =>
+        n.id === id ? { ...n, transform: { ...n.transform, ...transform } } : n
       ),
     })),
   selectNode: (id) => set({ selectedNodeId: id }),

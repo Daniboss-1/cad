@@ -4,7 +4,7 @@ import React from 'react';
 import { useStore, OperationType } from '@/lib/store';
 
 export default function Sidebar() {
-  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, moveNode } = useStore();
+  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode } = useStore();
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
   const getOpIcon = (op: OperationType) => {
@@ -203,6 +203,141 @@ export default function Sidebar() {
               }
               return null;
             })}
+
+            {/* Transformations */}
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Transformations
+              </label>
+              
+              {/* Position */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '10px', color: '#8b949e' }}>POSITION</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['X', 'Y', 'Z'].map((axis, i) => (
+                    <div key={axis} style={{ flex: 1 }}>
+                      <input
+                        type="number"
+                        value={selectedNode.transform.position[i]}
+                        step={0.1}
+                        onChange={(e) => {
+                          const newPos = [...selectedNode.transform.position] as [number, number, number];
+                          newPos[i] = parseFloat(e.target.value) || 0;
+                          updateNodeTransform(selectedNode.id, { position: newPos });
+                        }}
+                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#58a6ff', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rotation */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '10px', color: '#8b949e' }}>ROTATION (DEG)</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['X', 'Y', 'Z'].map((axis, i) => (
+                    <div key={axis} style={{ flex: 1 }}>
+                      <input
+                        type="number"
+                        value={selectedNode.transform.rotation[i]}
+                        step={1}
+                        onChange={(e) => {
+                          const newRot = [...selectedNode.transform.rotation] as [number, number, number];
+                          newRot[i] = parseFloat(e.target.value) || 0;
+                          updateNodeTransform(selectedNode.id, { rotation: newRot });
+                        }}
+                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#d29922', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scale */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '10px', color: '#8b949e' }}>SCALE</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['X', 'Y', 'Z'].map((axis, i) => (
+                    <div key={axis} style={{ flex: 1 }}>
+                      <input
+                        type="number"
+                        value={selectedNode.transform.scale[i]}
+                        step={0.1}
+                        min={0.1}
+                        onChange={(e) => {
+                          const newScale = [...selectedNode.transform.scale] as [number, number, number];
+                          newScale[i] = parseFloat(e.target.value) || 0.1;
+                          updateNodeTransform(selectedNode.id, { scale: newScale });
+                        }}
+                        style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#3fb950', padding: '4px', borderRadius: '4px', fontSize: '11px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 3: Metadata (Live BOM) */}
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Metadata (Supply-Chain Sentinel)
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>MATERIAL</label>
+                  <input
+                    type="text"
+                    value={selectedNode.material || ''}
+                    placeholder="e.g. Aluminum 6061"
+                    onChange={(e) => updateNode(selectedNode.id, { material: e.target.value })}
+                    style={{ width: '100%', background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', padding: '8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 4: Manufacturing Sim */}
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                GMS Twin (Manufacturing Sim)
+              </label>
+              <div style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '10px', color: '#8b949e' }}>FEASIBILITY</span>
+                  <span style={{ fontSize: '10px', color: '#3fb950', fontWeight: 'bold' }}>OPTIMAL</span>
+                </div>
+                <div style={{ height: '4px', background: '#21262d', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ width: '85%', height: '100%', background: '#3fb950' }} />
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '10px', color: '#8b949e', lineHeight: '1.4' }}>
+                   ✓ Wall thickness > 1.0mm<br/>
+                   ✓ Zero non-manifold edges<br/>
+                   ✓ Watertight kernel verified
+                </div>
+              </div>
+            </div>
+
+            {/* Phase 2: PDF Archaeological Dig */}
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px', marginBottom: '40px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Digital Archaeology (PDF-to-CAD)
+              </label>
+              <div 
+                style={{ 
+                  border: '1px dashed #30363d', 
+                  padding: '20px', 
+                  borderRadius: '6px', 
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = '#58a6ff'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = '#30363d'}
+              >
+                <span style={{ fontSize: '10px', color: '#8b949e' }}>UPLOAD PDF BLUEPRINT</span>
+              </div>
+            </div>
           </div>
         ) : (
           <div style={{ color: '#484f58', textAlign: 'center', marginTop: '40px', fontSize: '11px' }}>

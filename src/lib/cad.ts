@@ -85,6 +85,19 @@ export async function intersect(meshA: ManifoldInstance, meshB: ManifoldInstance
   return meshA.intersect(meshB);
 }
 
+export async function translate(mesh: ManifoldInstance, vector: [number, number, number]): Promise<ManifoldInstance> {
+  return mesh.translate(vector);
+}
+
+export async function rotate(mesh: ManifoldInstance, angles: [number, number, number]): Promise<ManifoldInstance> {
+  // Manifold rotate takes angles in degrees for each axis
+  return mesh.rotate(angles);
+}
+
+export async function scale(mesh: ManifoldInstance, factors: [number, number, number]): Promise<ManifoldInstance> {
+  return mesh.scale(factors);
+}
+
 export async function getMeshData(manifold: ManifoldInstance): Promise<MeshData> {
   return manifold.getMesh();
 }
