@@ -1,11 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useStore, OperationType } from '@/lib/store';
+import { parsePDFPaths } from '@/lib/pdf-parser';
 
 export default function Sidebar() {
-  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode } = useStore();
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+  const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode, addNode } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const findNodeRecursive = (nodes: any[], id: string | null): any => {
+    if (!id) return null;
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeRecursive(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const selectedNode = findNodeRecursive(nodes, selectedNodeId);
 
   const getOpIcon = (op: OperationType) => {
     switch (op) {
@@ -14,6 +28,78 @@ export default function Sidebar() {
       case 'Intersect': return '[×]';
     }
   };
+
+  const NodeItem = ({ node, index, depth = 0 }: { node: any, index: number, depth?: number }) => (
+    <div key={node.id}>
+      <div
+        onClick={() => selectNode(node.id)}
+        style={{
+          padding: '8px 10px',
+          background: selectedNodeId === node.id ? '#21262d' : 'transparent',
+          border: `1px solid ${selectedNodeId === node.id ? '#58a6ff' : 'transparent'}`,
+          borderRadius: '6px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          opacity: node.visible ? 1 : 0.4,
+          marginLeft: `${depth * 12}px`,
+        }}
+      >
+        <span style={{ color: '#8b949e', width: '15px' }}>{index}</span>
+        <span style={{ 
+          color: node.operation === 'Subtract' ? '#f85149' : 
+                 node.operation === 'Intersect' ? '#d29922' : '#3fb950',
+          fontWeight: 'bold',
+          fontSize: '10px'
+        }}>
+          {getOpIcon(node.operation)}
+        </span>
+        <span style={{ flex: 1 }}>{node.type}</span>
+        
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {node.type === 'Group' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addNode('Box', node.id);
+              }}
+              title="Add Child"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#58a6ff', padding: '2px' }}
+            >
+              +
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateNode(node.id, { visible: !node.visible });
+            }}
+            title="Toggle Visibility"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
+          >
+            {node.visible ? '◎' : '◉'}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              removeNode(node.id);
+            }}
+            style={{ background: 'transparent', border: 'none', color: '#f85149', cursor: 'pointer', marginLeft: '4px' }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      {node.children && node.children.length > 0 && (
+        <div style={{ marginTop: '4px' }}>
+          {node.children.map((child: any, i: number) => (
+            <NodeItem key={child.id} node={child} index={i} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -41,77 +127,11 @@ export default function Sidebar() {
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {nodes.map((node, index) => (
-            <div
-              key={node.id}
-              onClick={() => selectNode(node.id)}
-              style={{
-                padding: '8px 10px',
-                background: selectedNodeId === node.id ? '#21262d' : 'transparent',
-                border: `1px solid ${selectedNodeId === node.id ? '#58a6ff' : 'transparent'}`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                opacity: node.visible ? 1 : 0.4,
-              }}
-            >
-              <span style={{ color: '#8b949e', width: '15px' }}>{index}</span>
-              <span style={{ 
-                color: node.operation === 'Subtract' ? '#f85149' : 
-                       node.operation === 'Intersect' ? '#d29922' : '#3fb950',
-                fontWeight: 'bold',
-                fontSize: '10px'
-              }}>
-                {getOpIcon(node.operation)}
-              </span>
-              <span style={{ flex: 1 }}>{node.type}</span>
-              
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateNode(node.id, { visible: !node.visible });
-                  }}
-                  title="Toggle Visibility"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#8b949e', padding: '2px' }}
-                >
-                  {node.visible ? '◎' : '◉'}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveNode(node.id, 'up');
-                  }}
-                  disabled={index === 0}
-                  style={{ background: 'transparent', border: 'none', cursor: index === 0 ? 'default' : 'pointer', color: '#8b949e' }}
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveNode(node.id, 'down');
-                  }}
-                  disabled={index === nodes.length - 1}
-                  style={{ background: 'transparent', border: 'none', cursor: index === nodes.length - 1 ? 'default' : 'pointer', color: '#8b949e' }}
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeNode(node.id);
-                  }}
-                  style={{ background: 'transparent', border: 'none', color: '#f85149', cursor: 'pointer', marginLeft: '4px' }}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
+            <NodeItem key={node.id} node={node} index={index} />
           ))}
         </div>
       </div>
+
 
       {/* Properties */}
       <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
@@ -198,6 +218,14 @@ export default function Sidebar() {
                       style={{ accentColor: '#58a6ff' }}
                     />
                     <label style={{ color: '#8b949e', textTransform: 'uppercase', fontSize: '11px' }}>{key}</label>
+                  </div>
+                );
+              }
+              if (key === 'paths') {
+                return (
+                  <div key={key}>
+                    <label style={{ color: '#8b949e', textTransform: 'uppercase', fontSize: '11px' }}>{key}</label>
+                    <div style={{ color: '#58a6ff', fontSize: '10px' }}>{JSON.stringify(value).substring(0, 50)}...</div>
                   </div>
                 );
               }
@@ -323,6 +351,19 @@ export default function Sidebar() {
               <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Digital Archaeology (PDF-to-CAD)
               </label>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                accept="application/pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const paths = await parsePDFPaths(await file.arrayBuffer());
+                    addNode('Extrusion', undefined, { paths, height: 1 });
+                  }
+                }}
+              />
               <div 
                 style={{ 
                   border: '1px dashed #30363d', 
@@ -332,6 +373,7 @@ export default function Sidebar() {
                   cursor: 'pointer',
                   transition: 'border-color 0.2s'
                 }}
+                onClick={() => fileInputRef.current?.click()}
                 onMouseOver={(e) => e.currentTarget.style.borderColor = '#58a6ff'}
                 onMouseOut={(e) => e.currentTarget.style.borderColor = '#30363d'}
               >

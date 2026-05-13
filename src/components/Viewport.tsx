@@ -3,17 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 
 interface ViewportProps {
   geometry: THREE.BufferGeometry | null;
+  simMode?: boolean;
+  selectedNode?: any;
+  onUpdateTransform?: (transform: any) => void;
 }
 
-export default function Viewport({ geometry }: ViewportProps) {
+export default function Viewport({ geometry, simMode = false, selectedNode, onUpdateTransform }: ViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
+  const gizmoRef = useRef<TransformControls | null>(null);
+  const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const frameRef = useRef<number>(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +70,13 @@ export default function Viewport({ geometry }: ViewportProps) {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0);
+
+    const gizmo = new TransformControls(camera, renderer.domElement);
+    gizmo.addEventListener('dragging-changed', (event) => {
+      controls.enabled = !event.value;
+    });
+    gizmoRef.current = gizmo;
+    scene.add(gizmo);
 
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
@@ -118,10 +131,78 @@ export default function Viewport({ geometry }: ViewportProps) {
       roughness: 0.4,
     });
 
+    if (simMode) {
+      material.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          `#include <color_fragment>`,
+          `
+          #include <color_fragment>
+          float dotProduct = dot(vNormal, vec3(0.0, 1.0, 0.0));
+          if (dotProduct < 0.2) { // Highlight overhangs and steep walls
+             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.2, 0.2), 0.8);
+          }
+          `
+        );
+      };
+    }
+
     const mesh = new THREE.Mesh(geometry, material);
+
     meshRef.current = mesh;
     sceneRef.current.add(mesh);
-  }, [geometry]);
+  }, [geometry, simMode]);
+
+  useEffect(() => {
+    if (!sceneRef.current || !gizmoRef.current) return;
+    const gizmo = gizmoRef.current;
+    const scene = sceneRef.current;
+
+    if (ghostMeshRef.current) {
+      scene.remove(ghostMeshRef.current);
+      ghostMeshRef.current = null;
+    }
+
+    if (selectedNode && selectedNode.type !== 'Group') {
+      const { position, rotation, scale } = selectedNode.transform;
+      
+      let geo;
+      if (selectedNode.type === 'Box') {
+        geo = new THREE.BoxGeometry(selectedNode.params.width || 1, selectedNode.params.height || 1, selectedNode.params.depth || 1);
+      } else if (selectedNode.type === 'Sphere') {
+        geo = new THREE.SphereGeometry(selectedNode.params.radius || 1, 16, 16);
+      } else {
+        geo = new THREE.CylinderGeometry(selectedNode.params.radiusHigh || 1, selectedNode.params.radiusLow || 1, selectedNode.params.height || 2, 16);
+      }
+
+      const mat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, wireframe: true, transparent: true, opacity: 0.3 });
+      const ghost = new THREE.Mesh(geo, mat);
+      ghost.position.set(position[0], position[1], position[2]);
+      ghost.rotation.set(rotation[0] * Math.PI / 180, rotation[1] * Math.PI / 180, rotation[2] * Math.PI / 180);
+      ghost.scale.set(scale[0], scale[1], scale[2]);
+
+      ghostMeshRef.current = ghost;
+      scene.add(ghost);
+      gizmo.attach(ghost);
+
+      const handleGizmoChange = () => {
+        if (gizmo.object === ghost && onUpdateTransform) {
+          onUpdateTransform({
+            position: [ghost.position.x, ghost.position.y, ghost.position.z],
+            rotation: [ghost.rotation.x * 180 / Math.PI, ghost.rotation.y * 180 / Math.PI, ghost.rotation.z * 180 / Math.PI],
+            scale: [ghost.scale.x, ghost.scale.y, ghost.scale.z]
+          });
+        }
+      };
+
+      gizmo.addEventListener('change', handleGizmoChange);
+      return () => {
+        gizmo.removeEventListener('change', handleGizmoChange);
+        gizmo.detach();
+      };
+    } else {
+      gizmo.detach();
+    }
+  }, [selectedNode, onUpdateTransform]);
 
   if (error) {
     return (

@@ -8,6 +8,7 @@ import {
   createSphere, 
   createCylinder, 
   createTorus, 
+  extrude,
   union, 
   difference,
   intersect,
@@ -18,6 +19,7 @@ import {
   MeshData 
 } from '@/lib/cad';
 import { meshToBufferGeometry } from '@/lib/mesh-utils';
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import { useStore, CADNode } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import CommandK from '@/components/CommandK';
@@ -47,7 +49,35 @@ export default function Home() {
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Initializing...');
+  const [simMode, setSimMode] = useState(false);
   const nodes = useStore((state) => state.nodes);
+  const selectedNodeId = useStore((state) => state.selectedNodeId);
+  const updateNodeTransform = useStore((state) => state.updateNodeTransform);
+
+  const findNodeRecursive = (nodes: any[], id: string | null): any => {
+    if (!id) return null;
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeRecursive(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  const selectedNode = findNodeRecursive(nodes, selectedNodeId);
+
+  const exportSTL = () => {
+    if (!geometry) return;
+    const exporter = new STLExporter();
+    const mesh = new THREE.Mesh(geometry);
+    const result = exporter.parse(mesh);
+    const blob = new Blob([result], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'aether-export.stl';
+    link.click();
+  };
 
   const rebuildGeometry = useCallback(async () => {
     if (nodes.length === 0) {
@@ -60,87 +90,98 @@ export default function Home() {
     setStatus('Excavating form...');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buildRecursive = async (index: number): Promise<any> => {
-      if (index < 0) return null;
+    const buildNode = async (node: CADNode): Promise<any> => {
+      if (!node.visible) return null;
 
-      const previous = await buildRecursive(index - 1);
-      const node = nodes[index];
-
-      if (!node.visible) return previous;
-
-      // Create current primitive
       let current: any = null;
       try {
-        switch (node.type) {
-          case 'Box':
-            current = await createBox(node.params as any);
-            break;
-          case 'Sphere':
-            current = await createSphere(node.params as any);
-            break;
-          case 'Cylinder':
-            current = await createCylinder(node.params as any);
-            break;
-          case 'Torus':
-            current = await createTorus(node.params as any);
-            break;
+        if (node.type === 'Group' && node.children) {
+          for (const child of node.children) {
+            const childMesh = await buildNode(child);
+            if (!childMesh) continue;
+            if (!current) {
+              current = childMesh;
+            } else {
+              let next: any;
+              if (child.operation === 'Subtract') {
+                next = await difference(current, childMesh);
+              } else if (child.operation === 'Intersect') {
+                next = await intersect(current, childMesh);
+              } else {
+                next = await union(current, childMesh);
+              }
+              if (next !== current && current.delete) current.delete();
+              if (next !== childMesh && childMesh.delete) childMesh.delete();
+              current = next;
+            }
+          }
+        } else {
+          switch (node.type) {
+            case 'Box':
+              current = await createBox(node.params);
+              break;
+            case 'Sphere':
+              current = await createSphere(node.params);
+              break;
+            case 'Cylinder':
+              current = await createCylinder(node.params);
+              break;
+            case 'Torus':
+              current = await createTorus(node.params);
+              break;
+            case 'Extrusion':
+              current = await extrude(node.params.paths || [], node.params.height || 1);
+              break;
+          }
         }
 
-        // Apply transforms
         if (current) {
           const { position, rotation, scale: scaleFactors } = node.transform;
-
-          if (scaleFactors[0] !== 1 || scaleFactors[1] !== 1 || scaleFactors[2] !== 1) {
+          if (scaleFactors.some(s => s !== 1)) {
             const next = await scale(current, scaleFactors);
-            if (next !== current) current.delete();
+            if (next !== current && current.delete) current.delete();
             current = next;
           }
-
-          if (rotation[0] !== 0 || rotation[1] !== 0 || rotation[2] !== 0) {
+          if (rotation.some(r => r !== 0)) {
             const next = await rotate(current, rotation);
-            if (next !== current) current.delete();
+            if (next !== current && current.delete) current.delete();
             current = next;
           }
-
-          if (position[0] !== 0 || position[1] !== 0 || position[2] !== 0) {
+          if (position.some(p => p !== 0)) {
             const next = await translate(current, position);
-            if (next !== current) current.delete();
+            if (next !== current && current.delete) current.delete();
             current = next;
           }
         }
-
-        if (!previous) return current;
-
-        let result: any = null;
-        try {
-          switch (node.operation) {
-            case 'Add':
-              result = await union(previous, current);
-              break;
-            case 'Subtract':
-              result = await difference(previous, current);
-              break;
-            case 'Intersect':
-              result = await intersect(previous, current);
-              break;
-            default:
-              result = await union(previous, current);
-          }
-          return result;
-        } finally {
-          // Clean up intermediates
-          if (previous && typeof previous.delete === 'function') previous.delete();
-          if (current && typeof current.delete === 'function') current.delete();
-        }
+        return current;
       } catch (err) {
-        console.error(`Error building node ${index}:`, err);
-        if (current && typeof current.delete === 'function') current.delete();
-        return previous;
+        console.error(`Error building node ${node.id}:`, err);
+        if (current && current.delete) current.delete();
+        return null;
       }
     };
 
     try {
-      const finalResult = await buildRecursive(nodes.length - 1);
+      let finalResult: any = null;
+      for (const node of nodes) {
+        const nodeMesh = await buildNode(node);
+        if (!nodeMesh) continue;
+        if (!finalResult) {
+          finalResult = nodeMesh;
+        } else {
+          let next: any;
+          if (node.operation === 'Subtract') {
+            next = await difference(finalResult, nodeMesh);
+          } else if (node.operation === 'Intersect') {
+            next = await intersect(finalResult, nodeMesh);
+          } else {
+            next = await union(finalResult, nodeMesh);
+          }
+          if (next !== finalResult && finalResult.delete) finalResult.delete();
+          if (next !== nodeMesh && nodeMesh.delete) nodeMesh.delete();
+          finalResult = next;
+        }
+      }
 
       if (finalResult) {
         const meshData: MeshData = await getMeshData(finalResult);
@@ -161,7 +202,10 @@ export default function Home() {
   }, [nodes]);
 
   useEffect(() => {
-    rebuildGeometry();
+    const timer = setTimeout(() => {
+      rebuildGeometry();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [rebuildGeometry]);
 
   return (
@@ -200,11 +244,49 @@ export default function Home() {
           </>
         )}
         <div style={{ flex: 1 }} />
-        <span style={{ opacity: 0.5 }}>[CMD+K] ADD PRIMITIVE</span>
+        <button 
+          onClick={() => setSimMode(!simMode)}
+          style={{
+            background: simMode ? '#d29922' : '#30363d',
+            border: 'none',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+            marginRight: '10px'
+          }}
+        >
+          {simMode ? 'Exit Sim' : 'GMS Sim'}
+        </button>
+        <button 
+          onClick={exportSTL}
+          style={{
+            background: '#238636',
+            border: 'none',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            textTransform: 'uppercase'
+          }}
+        >
+          Export STL
+        </button>
+        <span style={{ opacity: 0.5, marginLeft: '10px' }}>[CMD+K] ADD PRIMITIVE</span>
       </header>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <Viewport geometry={geometry} />
+          <Viewport 
+            geometry={geometry} 
+            selectedNode={selectedNode}
+            simMode={simMode}
+            onUpdateTransform={(t) => updateNodeTransform(selectedNodeId!, t)}
+          />
           <BOMPanel />
         </div>
         <Sidebar />

@@ -98,6 +98,18 @@ export async function scale(mesh: ManifoldInstance, factors: [number, number, nu
   return mesh.scale(factors);
 }
 
+export async function extrude(paths: number[][][], height: number): Promise<ManifoldInstance> {
+  const module = await import('manifold-3d');
+  const instance = await module.default();
+  const CrossSection = instance.CrossSection;
+  const Manifold = instance.Manifold;
+  
+  const section = new CrossSection(paths);
+  const manifold = Manifold.extrude(section, height, 0, 0, [1, 1]);
+  section.delete();
+  return manifold;
+}
+
 export async function getMeshData(manifold: ManifoldInstance): Promise<MeshData> {
   return manifold.getMesh();
 }
