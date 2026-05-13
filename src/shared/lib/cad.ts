@@ -1,10 +1,12 @@
-import { 
-  ManifoldInstance, 
-  ManifoldStatic, 
-  MeshData, 
+import {
+  ManifoldInstance,
+  ManifoldStatic,
+  MeshData,
   CrossSectionInstance,
-  ManifoldModule 
-} from '../types/manifold';
+  ManifoldModule
+} from '@/types/manifold';
+
+export type { MeshData };
 
 export interface BoxParams {
   width: number;
@@ -62,7 +64,7 @@ async function ensureManifold(): Promise<ManifoldModule> {
     manifoldPromise = (async () => {
       const module = await import('manifold-3d');
       const instance = await module.default();
-      return instance;
+      return instance as unknown as ManifoldModule;
     })();
   }
   return manifoldPromise;
@@ -82,17 +84,17 @@ export async function filletMesh(mesh: ManifoldInstance, radius: number, registr
       const result = (mesh as any).smoothOut(radius);
       return registry ? registry.register(result) : result;
     }
-    
+
     if ((mesh as any).smooth) {
       // Some versions use smooth() with a refinement level
-      const result = (mesh as any).smooth(3); 
+      const result = (mesh as any).smooth(3);
       return registry ? registry.register(result) : result;
     }
   } catch (e) {
     console.warn('Manifold fillet/smooth failed, falling back to original mesh', e);
   }
-  
-  return mesh; 
+
+  return mesh;
 }
 
 export async function createCylinder(params: CylinderParams, registry?: ManifoldRegistry): Promise<ManifoldInstance> {

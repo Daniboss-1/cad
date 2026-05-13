@@ -20,12 +20,12 @@ export interface FilletParams {
   radius: number;
 }
 
-export type NodeParams = 
-  | BoxParams 
-  | SphereParams 
-  | CylinderParams 
-  | TorusParams 
-  | ExtrusionParams 
+export type NodeParams =
+  | BoxParams
+  | SphereParams
+  | CylinderParams
+  | TorusParams
+  | ExtrusionParams
   | FilletParams
   | Record<string, never>;
 
@@ -254,7 +254,7 @@ export const useStore = create<CADState>((set) => ({
       children: selectedNodes,
     };
 
-    return { 
+    return {
       nodes: [...newNodes, groupNode],
       selectedNodeId: groupId
     };

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore, NodeType, AgentMessage } from '@/lib/store';
-import { parseIntent, Intent, OracleCore } from '@/lib/oracle';
+import { useStore, NodeType, AgentMessage } from '@/shared/lib/store';
+import { parseIntent, Intent, OracleCore } from '@/shared/lib/oracle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CommandK() {
@@ -96,7 +96,7 @@ export default function CommandK() {
       return;
     }
 
-    if (type !== 'Oracle') {
+    if ((type as string) !== 'Oracle') {
       addNode(type as NodeType);
       setOpen(false);
       setSearch('');
@@ -187,15 +187,15 @@ export default function CommandK() {
                 <div style={{ padding: '48px 24px', textAlign: 'center' }}>
                   <div style={{ color: '#58a6ff', fontSize: '11px', marginBottom: '16px', letterSpacing: '2px' }}>{oracleResponse?.toUpperCase()}</div>
                   <div style={{ width: '100%', height: '1px', background: '#21262d', position: 'relative', overflow: 'hidden' }}>
-                    <motion.div 
+                    <motion.div
                       animate={{ left: ['-100%', '100%'] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                      style={{ 
-                        position: 'absolute', 
-                        width: '30%', 
-                        height: '100%', 
+                      style={{
+                        position: 'absolute',
+                        width: '30%',
+                        height: '100%',
                         background: 'linear-gradient(90deg, transparent, #58a6ff, transparent)',
-                      }} 
+                      }}
                     />
                   </div>
                 </div>
@@ -273,11 +273,11 @@ export default function CommandK() {
               )}
             </div>
 
-            <div style={{ 
-              marginTop: '16px', 
-              padding: '12px 4px 0', 
-              borderTop: '1px solid #21262d', 
-              fontSize: '9px', 
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 4px 0',
+              borderTop: '1px solid #21262d',
+              fontSize: '9px',
               color: '#484f58',
               display: 'flex',
               gap: '16px',

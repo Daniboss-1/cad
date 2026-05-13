@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useStore, CADNode } from '@/lib/store';
-import { fetchVendorStatus, VendorData } from '@/lib/vendor-service';
+import { useStore, CADNode } from '@/shared/lib/store';
+import { fetchVendorStatus, VendorData } from '@/shared/lib/vendor-service';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function BOMPanel() {
@@ -15,7 +15,7 @@ export default function BOMPanel() {
       setIsRefreshing(true);
       const items = flattenNodes(nodes).filter(n => n.visible && n.type !== 'Group' && n.sku);
       const newData: Record<string, VendorData> = {};
-      
+
       for (const item of items) {
         if (item.sku) {
           const data = await fetchVendorStatus(item.sku);
@@ -38,7 +38,7 @@ export default function BOMPanel() {
 
   const calculateVolume = (node: CADNode): number => {
     if (!node.visible) return 0;
-    
+
     let baseVolume = 0;
     if (node.children && node.children.length > 0) {
       node.children.forEach((child) => {
@@ -135,11 +135,11 @@ export default function BOMPanel() {
     >
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <div style={{ 
-            width: '8px', 
-            height: '8px', 
-            borderRadius: '50%', 
-            background: isRefreshing ? '#d29922' : '#3fb950', 
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: isRefreshing ? '#d29922' : '#3fb950',
             boxShadow: `0 0 10px ${isRefreshing ? '#d29922' : '#3fb950'}`
           }} />
           <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '1px' }}>PHASE 3: MANUFACTURING INTELLIGENCE</span>
@@ -159,7 +159,7 @@ export default function BOMPanel() {
         <tbody>
           <AnimatePresence>
             {bomItems.map((item) => (
-              <motion.tr 
+              <motion.tr
                 key={item.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -186,12 +186,12 @@ export default function BOMPanel() {
         </tbody>
       </table>
 
-      <div style={{ 
-        marginTop: '16px', 
-        paddingTop: '16px', 
-        borderTop: '2px solid rgba(48, 54, 61, 0.5)', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        marginTop: '16px',
+        paddingTop: '16px',
+        borderTop: '2px solid rgba(48, 54, 61, 0.5)',
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'flex-end'
       }}>
         <div>

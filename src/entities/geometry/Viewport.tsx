@@ -9,16 +9,26 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
-import { checkCollision } from '@/lib/mesh-utils';
-import { reachabilityVertexShader, reachabilityFragmentShader } from '@/shaders/reachability.glsl';
+import { checkCollision } from '@/shared/lib/mesh-utils';
+import { CADNode } from '@/shared/lib/store';
 
 interface ViewportProps {
   geometry: THREE.BufferGeometry | null;
   simMode?: boolean;
   selectedNodeId?: string | null;
+  selectedNode?: CADNode | null;
+  onSelectNode?: (id: string | null) => void;
+  onUpdateTransform?: (transform: { position: [number, number, number], rotation: [number, number, number], scale: [number, number, number] }) => void;
 }
 
-export default function Viewport({ geometry, simMode = false, selectedNodeId }: ViewportProps) {
+export default function Viewport({
+  geometry,
+  simMode = false,
+  selectedNodeId,
+  selectedNode,
+  onSelectNode,
+  onUpdateTransform
+}: ViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -28,6 +38,7 @@ export default function Viewport({ geometry, simMode = false, selectedNodeId }: 
   const meshRef = useRef<THREE.Mesh | null>(null);
   const toolRef = useRef<THREE.Mesh | null>(null);
   const gizmoRef = useRef<TransformControls | null>(null);
+  const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const frameRef = useRef<number>(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +98,13 @@ export default function Viewport({ geometry, simMode = false, selectedNodeId }: 
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
+    const gizmo = new TransformControls(camera, renderer.domElement);
+    gizmo.addEventListener('dragging-changed', (e) => {
+      controls.enabled = !e.value;
+    });
+    scene.add(gizmo);
+    gizmoRef.current = gizmo;
+
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
       controls.update();
@@ -128,7 +146,7 @@ export default function Viewport({ geometry, simMode = false, selectedNodeId }: 
       }
       container.innerHTML = '';
     };
-  }, [simMode]); // Re-init on simMode change to simplify tool setup
+  }, [simMode]);
 
   useEffect(() => {
     if (!sceneRef.current || !geometry) return;
@@ -167,6 +185,71 @@ export default function Viewport({ geometry, simMode = false, selectedNodeId }: 
       }
     };
   }, [geometry, simMode]);
+
+  useEffect(() => {
+    if (!sceneRef.current || !gizmoRef.current) return;
+    const gizmo = gizmoRef.current;
+    const scene = sceneRef.current;
+
+    if (ghostMeshRef.current) {
+      scene.remove(ghostMeshRef.current);
+      ghostMeshRef.current = null;
+    }
+
+    const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect', 'Fillet'].includes(type);
+
+    if (selectedNode && !isContainer(selectedNode.type)) {
+      const { position, rotation, scale } = selectedNode.transform;
+
+      let geo;
+      if (selectedNode.type === 'Box') {
+        geo = new THREE.BoxGeometry((selectedNode.params as any).width || 1, (selectedNode.params as any).height || 1, (selectedNode.params as any).depth || 1);
+      } else if (selectedNode.type === 'Sphere') {
+        geo = new THREE.SphereGeometry((selectedNode.params as any).radius || 1, 16, 16);
+      } else if (selectedNode.type === 'Cylinder') {
+        geo = new THREE.CylinderGeometry((selectedNode.params as any).radiusHigh || 1, (selectedNode.params as any).radiusLow || 1, (selectedNode.params as any).height || 2, 16);
+      } else if (selectedNode.type === 'Torus') {
+        geo = new THREE.TorusGeometry((selectedNode.params as any).radius || 1, (selectedNode.params as any).tube || 0.4, 16, 100);
+      } else {
+        geo = new THREE.BoxGeometry(1, 1, 1);
+      }
+
+      const mat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, wireframe: true, transparent: true, opacity: 0.3 });
+      const ghost = new THREE.Mesh(geo, mat);
+      ghost.position.set(position[0], position[1], position[2]);
+      ghost.rotation.set(rotation[0] * Math.PI / 180, rotation[1] * Math.PI / 180, rotation[2] * Math.PI / 180);
+      ghost.scale.set(scale[0], scale[1], scale[2]);
+
+      ghostMeshRef.current = ghost;
+      scene.add(ghost);
+      gizmo.attach(ghost);
+
+      if (outlinePassRef.current) {
+        outlinePassRef.current.selectedObjects = [ghost];
+      }
+
+      const handleGizmoChange = () => {
+        if (gizmo.object === ghost && onUpdateTransform) {
+          onUpdateTransform({
+            position: [ghost.position.x, ghost.position.y, ghost.position.z],
+            rotation: [ghost.rotation.x * 180 / Math.PI, ghost.rotation.y * 180 / Math.PI, ghost.rotation.z * 180 / Math.PI],
+            scale: [ghost.scale.x, ghost.scale.y, ghost.scale.z]
+          });
+        }
+      };
+
+      gizmo.addEventListener('change', handleGizmoChange);
+      return () => {
+        gizmo.removeEventListener('change', handleGizmoChange);
+        gizmo.detach();
+      };
+    } else {
+      gizmo.detach();
+      if (outlinePassRef.current) {
+        outlinePassRef.current.selectedObjects = [];
+      }
+    }
+  }, [selectedNode, onUpdateTransform]);
 
   if (error) {
     return (

@@ -28,7 +28,7 @@ const nextConfig = {
       config.plugins.push(
         new webpack.NormalModuleReplacementPlugin(
           /^node:module$/,
-          path.resolve(__dirname, 'src/lib/shims/node-module.js')
+          path.resolve(__dirname, 'src/shared/lib/shims/node-module.js')
         )
       );
     }
