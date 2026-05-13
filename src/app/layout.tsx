@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CAD - Computer Aided Design',
-  description: 'A CAD application built with Next.js, Three.js, and Manifold-3D',
+  title: 'Aether CAD',
+  description: 'Phase 0 Parametric CAD',
 };
 
 export default function RootLayout({

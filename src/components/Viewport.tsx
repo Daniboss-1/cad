@@ -115,16 +115,6 @@ export default function Viewport({ geometry }: ViewportProps) {
     const mesh = new THREE.Mesh(geometry, material);
     meshRef.current = mesh;
     sceneRef.current.add(mesh);
-
-    if (cameraRef.current) {
-      const box = new THREE.Box3().setFromObject(mesh);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const distance = maxDim * 2;
-      cameraRef.current.position.set(center.x + distance, center.y + distance, center.z + distance);
-      cameraRef.current.lookAt(center);
-    }
   }, [geometry]);
 
   if (error) {
