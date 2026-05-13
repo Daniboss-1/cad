@@ -19,6 +19,7 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
+  const toolRef = useRef<THREE.Mesh | null>(null);
   const gizmoRef = useRef<TransformControls | null>(null);
   const ghostMeshRef = useRef<THREE.Mesh | null>(null);
   const frameRef = useRef<number>(0);
@@ -54,6 +55,24 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
+    
+    // Create a procedural environment map
+    const sceneEnv = new THREE.Scene();
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x1a1a2e, side: THREE.BackSide });
+    const bgGeo = new THREE.SphereGeometry(100);
+    const bgMesh = new THREE.Mesh(bgGeo, bgMat);
+    sceneEnv.add(bgMesh);
+    
+    const light1 = new THREE.DirectionalLight(0xffffff, 2);
+    light1.position.set(10, 10, 10);
+    sceneEnv.add(light1);
+    
+    const light2 = new THREE.DirectionalLight(0x58a6ff, 1);
+    light2.position.set(-10, 5, -10);
+    sceneEnv.add(light2);
+
+    const renderTarget = pmremGenerator.fromScene(sceneEnv);
+    scene.environment = renderTarget.texture;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
@@ -130,6 +149,21 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
     }
 
     if (!geometry) return;
+
+    if (simMode) {
+      // Add Tool Visualization
+      const toolGeo = new THREE.CylinderGeometry(0.1, 0.1, 5, 16);
+      const toolMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
+      const tool = new THREE.Mesh(toolGeo, toolMat);
+      tool.position.set(0, 2.5, 0);
+      sceneRef.current.add(tool);
+      toolRef.current = tool;
+    } else {
+      if (toolRef.current) {
+        sceneRef.current.remove(toolRef.current);
+        toolRef.current = null;
+      }
+    }
 
     let material: THREE.Material;
 

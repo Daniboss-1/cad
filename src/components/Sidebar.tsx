@@ -2,10 +2,9 @@
 
 import React, { useRef } from 'react';
 import { useStore, OperationType } from '@/lib/store';
-import { parseDigitalArchaeology } from '@/lib/pdf-parser';
 import { fetchVendorStatus } from '@/lib/vendor-service';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Tool, Database, Activity } from 'lucide-react';
+import { Package, Wrench, Database, Activity } from 'lucide-react';
 
 export default function Sidebar() {
   const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode, addNode } = useStore();
@@ -194,7 +193,7 @@ export default function Sidebar() {
           alignItems: 'center',
           gap: '8px'
         }}>
-          <Tool size={14} />
+          <Wrench size={14} />
           Parameters
         </h3>
         {selectedNode ? (
@@ -444,7 +443,7 @@ export default function Sidebar() {
                   <div style={{ width: '85%', height: '100%', background: '#3fb950' }} />
                 </div>
                 <div style={{ marginTop: '8px', fontSize: '10px', color: '#8b949e', lineHeight: '1.4' }}>
-                   ✓ Wall thickness > 1.0mm<br/>
+                   ✓ Wall thickness &gt; 1.0mm<br/>
                    ✓ Zero non-manifold edges<br/>
                    ✓ Watertight kernel verified
                 </div>
@@ -465,6 +464,7 @@ export default function Sidebar() {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
+                    const { parseDigitalArchaeology } = await import('@/lib/pdf-parser');
                     const result = await parseDigitalArchaeology(file);
                     result.paths.forEach(p => {
                       addNode('Extrusion', undefined, { paths: [p.points], height: 1 });

@@ -9,10 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
     "manifold-3d": "^3.4.1",
     "next": "14.2.5",
+    "pdfjs-dist": "^5.7.284",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.6.0",
+    "tesseract.js": "^7.0.0",
     "three": "^0.166.1",
     "zustand": "^4.5.4"
   },
