@@ -19,13 +19,24 @@ export interface CADNode {
   transform: Transform;
   visible: boolean;
   material?: string;
+  sku?: string;
+  vendor?: string;
+  cost?: number;
+  leadTime?: string;
   partNumber?: string;
   children?: CADNode[];
+}
+
+export interface AgentMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  agent?: string;
 }
 
 interface CADState {
   nodes: CADNode[];
   selectedNodeId: string | null;
+  messages: AgentMessage[];
   addNode: (type: NodeType, parentId?: string, initialParams?: any, initialTransform?: Partial<Transform>) => void;
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
@@ -35,6 +46,7 @@ interface CADState {
   moveNode: (id: string, direction: 'up' | 'down') => void;
   reorderNodes: (nodes: CADNode[]) => void;
   groupNodes: (ids: string[], groupName?: string) => void;
+  addMessage: (message: AgentMessage) => void;
 }
 
 const getDefaultTransform = (): Transform => ({
@@ -78,6 +90,9 @@ export const useStore = create<CADState>((set) => ({
     },
   ],
   selectedNodeId: 'default-box',
+  messages: [
+    { role: 'system', content: 'Oracle Core initialized. Awaiting design instructions.', agent: 'Orchestrator' }
+  ],
   addNode: (type, parentId, initialParams, initialTransform) => {
     const id = Math.random().toString(36).substring(7);
     const newNode: CADNode = {
@@ -215,5 +230,6 @@ export const useStore = create<CADState>((set) => ({
       nodes: [...newNodes, groupNode],
       selectedNodeId: groupId
     };
-  })
+  }),
+  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
 }));

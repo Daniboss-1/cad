@@ -68,7 +68,7 @@ export default function BOMPanel() {
 
     const materialInfo = materials.find(m => node.material?.includes(m.name)) || materials[0];
     const weight = (volume * materialInfo.density) / 1000; // units adjustment
-    const cost = weight * materialInfo.costPerKg;
+    const cost = node.cost || (weight * materialInfo.costPerKg);
 
     return {
       id: node.id,
@@ -76,7 +76,9 @@ export default function BOMPanel() {
       type: node.type,
       material: node.material || 'Aluminum 6061 (Default)',
       weight: weight.toFixed(3),
-      cost: cost.toFixed(2)
+      cost: typeof cost === 'number' ? cost.toFixed(2) : cost,
+      vendor: node.vendor || 'Generic',
+      leadTime: node.leadTime || 'Stock'
     };
   });
 
@@ -110,8 +112,8 @@ export default function BOMPanel() {
         <thead>
           <tr style={{ textAlign: 'left', color: '#8b949e' }}>
             <th style={{ padding: '4px 0' }}>PART</th>
-            <th>MATERIAL</th>
-            <th style={{ textAlign: 'right' }}>KG</th>
+            <th>VENDOR</th>
+            <th>STATUS</th>
             <th style={{ textAlign: 'right' }}>USD</th>
           </tr>
         </thead>
@@ -119,8 +121,8 @@ export default function BOMPanel() {
           {bomItems.map((item) => (
             <tr key={item.id} style={{ borderTop: '1px solid #21262d' }}>
               <td style={{ padding: '6px 0' }}>{item.name}</td>
-              <td style={{ color: '#8b949e' }}>{item.material.split(' ')[0]}</td>
-              <td style={{ textAlign: 'right' }}>{item.weight}</td>
+              <td style={{ color: '#8b949e' }}>{item.vendor}</td>
+              <td style={{ color: item.leadTime === 'Stock' ? '#3fb950' : '#d29922' }}>{item.leadTime}</td>
               <td style={{ textAlign: 'right', color: '#3fb950' }}>${item.cost}</td>
             </tr>
           ))}

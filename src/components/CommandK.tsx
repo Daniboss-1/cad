@@ -1,17 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore, NodeType } from '@/lib/store';
-import { oracle } from '@/lib/oracle-core';
+import { useStore, NodeType, AgentMessage } from '@/lib/store';
 import { parseIntent, Intent } from '@/lib/oracle';
+import { orchestrate } from '@/lib/oracle/orchestrator';
 
 export default function CommandK() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [suggestedIntent, setSuggestedIntent] = useState<Intent | null>(null);
-  const { addNode, updateNode, updateNodeParams } = useStore();
+  const { addNode, updateNode, updateNodeParams, addMessage, messages, nodes, selectedNodeId } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (search.length > 2) {
@@ -70,25 +77,17 @@ export default function CommandK() {
 
     if (type === 'Oracle' || (filteredOptions.length === 0 && search.length > 0)) {
       setIsOracleProcessing(true);
-      setOracleResponse('CONSULTING ORACLE CORE...');
       
-      const response = await oracle.process(search);
-      setOracleResponse(response.message);
-      
-      setTimeout(() => {
-        if (response.type === 'ADD_NODE') {
-          addNode(response.payload.type);
-          // Assuming the last added node is the one we want to update
-          // In a real app we'd get the ID from addNode return
+      await orchestrate(search, { nodes, selection: selectedNodeId }, (msg) => {
+        addMessage(msg);
+        if (msg.role === 'assistant' && msg.agent === 'Architect' && msg.content.includes('box')) {
+           // Example of agent taking action
+           addNode('Box');
         }
-        
-        setTimeout(() => {
-          setOpen(false);
-          setOracleResponse(null);
-          setIsOracleProcessing(false);
-          setSearch('');
-        }, 1000);
-      }, 1000);
+      });
+
+      setIsOracleProcessing(false);
+      setSearch('');
       return;
     }
     addNode(type as NodeType);
@@ -167,7 +166,22 @@ export default function CommandK() {
             }}
           />
         </div>
-        <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+        <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{ 
+              padding: '8px 12px', 
+              background: msg.role === 'user' ? '#0d1117' : '#1f242c',
+              borderRadius: '6px',
+              borderLeft: `3px solid ${msg.role === 'user' ? '#8b949e' : (msg.agent === 'Architect' ? '#58a6ff' : (msg.agent === 'Engineer' ? '#3fb950' : '#d29922'))}`
+            }}>
+              <div style={{ fontSize: '10px', color: '#8b949e', marginBottom: '4px', fontWeight: 'bold' }}>
+                {msg.agent || msg.role.toUpperCase()}
+              </div>
+              <div style={{ fontSize: '12px', color: '#c9d1d9' }}>{msg.content}</div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+          
           {suggestedIntent && suggestedIntent.type !== 'UNKNOWN' && !isOracleProcessing && (
             <div
               onClick={() => handleSelect('Oracle', suggestedIntent)}
