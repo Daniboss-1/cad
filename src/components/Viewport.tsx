@@ -57,6 +57,9 @@ export default function Viewport({ geometry }: ViewportProps) {
     const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
     scene.add(gridHelper);
 
+    const axesHelper = new THREE.AxesHelper(5);
+    scene.add(axesHelper);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;

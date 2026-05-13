@@ -10,55 +10,42 @@ export default function CommandK() {
   const addNode = useStore((state) => state.addNode);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const options: { label: string; value: NodeType; description: string }[] = [
+  const options: { label: string; value: NodeType | 'Oracle'; description: string }[] = [
     { label: 'Box', value: 'Box', description: 'Rectilinear volume excavation' },
     { label: 'Sphere', value: 'Sphere', description: 'Perfect orbital curvature' },
     { label: 'Cylinder', value: 'Cylinder', description: 'Extruded circular profile' },
     { label: 'Torus', value: 'Torus', description: 'Cyclic manifold ring' },
+    { label: 'Oracle', value: 'Oracle', description: 'Generative Multi-agent Orchestration' },
   ];
 
   const filteredOptions = options.filter((o) =>
     o.label.toLowerCase().includes(search.toLowerCase())
   );
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setOpen((o) => !o);
-        setSearch('');
-        setSelectedIndex(0);
-      }
-      if (e.key === 'Escape') {
-        setOpen(false);
-      }
+  const [oracleResponse, setOracleResponse] = useState<string | null>(null);
+  const [isOracleProcessing, setIsOracleProcessing] = useState(false);
 
-      if (open) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          setSelectedIndex((i) => (i + 1) % filteredOptions.length);
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          setSelectedIndex((i) => (i - 1 + filteredOptions.length) % filteredOptions.length);
-        } else if (e.key === 'Enter' && filteredOptions.length > 0) {
-          e.preventDefault();
-          handleSelect(filteredOptions[selectedIndex].value);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, filteredOptions, selectedIndex]);
-
-  useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus();
+  const handleSelect = async (type: NodeType | 'Oracle') => {
+    if (type === 'Oracle') {
+      setIsOracleProcessing(true);
+      setOracleResponse('Oracle is consulting the Manifold spirits...');
+      
+      // Simulate Oracle Core Processing
+      setTimeout(() => {
+        setOracleResponse('PROMPT RECEIVED: "Create a 5x5 plate with a hole in the center"');
+        setTimeout(() => {
+          addNode('Box');
+          // In a real implementation, we'd update params here too
+          setOracleResponse('ORACLE: Form manifested. Adjusting stratigraphy...');
+          setTimeout(() => {
+            setOpen(false);
+            setOracleResponse(null);
+            setIsOracleProcessing(false);
+          }, 1500);
+        }, 1000);
+      }, 1500);
+      return;
     }
-  }, [open]);
-
-  if (!open) return null;
-
-  const handleSelect = (type: NodeType) => {
     addNode(type);
     setOpen(false);
     setSearch('');
@@ -117,33 +104,59 @@ export default function CommandK() {
           />
         </div>
         <div style={{ marginTop: '8px', maxHeight: '400px', overflowY: 'auto' }}>
-          {filteredOptions.map((o, index) => (
-            <div
-              key={o.value}
-              onClick={() => handleSelect(o.value)}
-              style={{
-                padding: '12px 16px',
-                cursor: 'pointer',
-                color: selectedIndex === index ? '#fff' : '#8b949e',
-                background: selectedIndex === index ? '#21262d' : 'transparent',
-                borderRadius: '6px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.1s ease',
-              }}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{o.label.toUpperCase()}</span>
-                <span style={{ fontSize: '11px', opacity: 0.6 }}>{o.description}</span>
+          {isOracleProcessing ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{ color: '#58a6ff', fontSize: '12px', marginBottom: '10px', animation: 'pulse 2s infinite' }}>{oracleResponse}</div>
+              <div style={{ width: '100%', height: '2px', background: '#21262d', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ 
+                  position: 'absolute', 
+                  width: '40%', 
+                  height: '100%', 
+                  background: '#58a6ff',
+                  animation: 'shimmer 1.5s infinite linear'
+                }} />
               </div>
-              {selectedIndex === index && (
-                <span style={{ fontSize: '12px', color: '#58a6ff' }}>↵ ENTER</span>
-              )}
+              <style>{`
+                @keyframes shimmer {
+                  0% { left: -40%; }
+                  100% { left: 100%; }
+                }
+                @keyframes pulse {
+                  0% { opacity: 0.5; }
+                  50% { opacity: 1; }
+                  100% { opacity: 0.5; }
+                }
+              `}</style>
             </div>
-          ))}
-          {filteredOptions.length === 0 && (
+          ) : (
+            filteredOptions.map((o, index) => (
+              <div
+                key={o.value}
+                onClick={() => handleSelect(o.value)}
+                style={{
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  color: selectedIndex === index ? '#fff' : '#8b949e',
+                  background: selectedIndex === index ? '#21262d' : 'transparent',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.1s ease',
+                }}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{o.label.toUpperCase()}</span>
+                  <span style={{ fontSize: '11px', opacity: 0.6 }}>{o.description}</span>
+                </div>
+                {selectedIndex === index && (
+                  <span style={{ fontSize: '12px', color: '#58a6ff' }}>↵ ENTER</span>
+                )}
+              </div>
+            ))
+          )}
+          {!isOracleProcessing && filteredOptions.length === 0 && (
             <div style={{ padding: '20px', color: '#484f58', textAlign: 'center', fontSize: '12px' }}>
               NO PRIMITIVES MATCH YOUR SEARCH
             </div>

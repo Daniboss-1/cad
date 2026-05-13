@@ -11,6 +11,9 @@ import {
   union, 
   difference,
   intersect,
+  translate,
+  rotate,
+  scale,
   getMeshData, 
   MeshData 
 } from '@/lib/cad';
@@ -18,6 +21,7 @@ import { meshToBufferGeometry } from '@/lib/mesh-utils';
 import { useStore, CADNode } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import CommandK from '@/components/CommandK';
+import BOMPanel from '@/components/BOMPanel';
 
 const Viewport = dynamic(() => import('@/components/Viewport'), {
   ssr: false,
@@ -80,6 +84,29 @@ export default function Home() {
           case 'Torus':
             current = await createTorus(node.params as any);
             break;
+        }
+
+        // Apply transforms
+        if (current) {
+          const { position, rotation, scale: scaleFactors } = node.transform;
+
+          if (scaleFactors[0] !== 1 || scaleFactors[1] !== 1 || scaleFactors[2] !== 1) {
+            const next = await scale(current, scaleFactors);
+            if (next !== current) current.delete();
+            current = next;
+          }
+
+          if (rotation[0] !== 0 || rotation[1] !== 0 || rotation[2] !== 0) {
+            const next = await rotate(current, rotation);
+            if (next !== current) current.delete();
+            current = next;
+          }
+
+          if (position[0] !== 0 || position[1] !== 0 || position[2] !== 0) {
+            const next = await translate(current, position);
+            if (next !== current) current.delete();
+            current = next;
+          }
         }
 
         if (!previous) return current;
@@ -178,6 +205,7 @@ export default function Home() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <Viewport geometry={geometry} />
+          <BOMPanel />
         </div>
         <Sidebar />
       </div>
