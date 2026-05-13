@@ -13,31 +13,59 @@ export default function BOMPanel() {
     { name: 'ABS Plastic', density: 1.04, costPerKg: 3.5 },
   ];
 
-  const calculateVolume = (node: any) => {
-    // Highly simplified volume calculation for estimation
-    // In a real app, we'd get this from Manifold-3D mesh.getProperties()
-    const p = node.params as any;
-    const s = node.transform.scale;
+  const calculateVolume = (node: any): number => {
+    if (!node.visible) return 0;
+    
     let baseVolume = 0;
-    switch (node.type) {
-      case 'Box':
-        baseVolume = p.width * p.height * p.depth;
-        break;
-      case 'Sphere':
-        baseVolume = (4/3) * Math.PI * Math.pow(p.radius, 3);
-        break;
-      case 'Cylinder':
-        baseVolume = Math.PI * Math.pow(p.radiusLow, 2) * p.height;
-        break;
-      case 'Torus':
-        baseVolume = (Math.PI * Math.pow(p.tube, 2)) * (2 * Math.PI * p.radius);
-        break;
+    if (node.type === 'Group' && node.children) {
+      node.children.forEach((child: any) => {
+        const childVol = calculateVolume(child);
+        if (child.operation === 'Subtract') {
+          baseVolume -= childVol;
+        } else if (child.operation === 'Intersect') {
+          baseVolume = Math.min(baseVolume, childVol);
+        } else {
+          baseVolume += childVol;
+        }
+      });
+    } else {
+      const p = node.params as any;
+      switch (node.type) {
+        case 'Box':
+          baseVolume = (p.width || 0) * (p.height || 0) * (p.depth || 0);
+          break;
+        case 'Sphere':
+          baseVolume = (4/3) * Math.PI * Math.pow(p.radius || 0, 3);
+          break;
+        case 'Cylinder':
+          baseVolume = Math.PI * Math.pow(p.radiusLow || 0, 2) * (p.height || 0);
+          break;
+        case 'Torus':
+          baseVolume = (Math.PI * Math.pow(p.tube || 0, 2)) * (2 * Math.PI * (p.radius || 0));
+          break;
+        case 'Extrusion':
+          baseVolume = 25 * (p.height || 1); // Estimated area 25 for mock
+          break;
+      }
     }
-    return baseVolume * s[0] * s[1] * s[2];
+    const s = node.transform.scale;
+    return Math.max(0, baseVolume * s[0] * s[1] * s[2]);
   };
 
-  const bomItems = nodes.filter(n => n.visible).map(node => {
+  const flattenNodes = (nodes: any[]): any[] => {
+    let result: any[] = [];
+    nodes.forEach(n => {
+      result.push(n);
+      if (n.children) {
+        result = [...result, ...flattenNodes(n.children)];
+      }
+    });
+    return result;
+  };
+
+  const bomItems = flattenNodes(nodes).filter(n => n.visible && n.type !== 'Group').map(node => {
     const volume = calculateVolume(node);
+
     const materialInfo = materials.find(m => node.material?.includes(m.name)) || materials[0];
     const weight = (volume * materialInfo.density) / 1000; // units adjustment
     const cost = weight * materialInfo.costPerKg;

@@ -2,19 +2,41 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore, NodeType } from '@/lib/store';
+import { oracle } from '@/lib/oracle-core';
 
 export default function CommandK() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const addNode = useStore((state) => state.addNode);
+  const { addNode, updateNode, updateNodeParams } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
 
   const options: { label: string; value: NodeType | 'Oracle'; description: string }[] = [
     { label: 'Box', value: 'Box', description: 'Rectilinear volume excavation' },
     { label: 'Sphere', value: 'Sphere', description: 'Perfect orbital curvature' },
     { label: 'Cylinder', value: 'Cylinder', description: 'Extruded circular profile' },
     { label: 'Torus', value: 'Torus', description: 'Cyclic manifold ring' },
+    { label: 'Group', value: 'Group', description: 'Composite collection' },
     { label: 'Oracle', value: 'Oracle', description: 'Generative Multi-agent Orchestration' },
   ];
 
@@ -26,30 +48,35 @@ export default function CommandK() {
   const [isOracleProcessing, setIsOracleProcessing] = useState(false);
 
   const handleSelect = async (type: NodeType | 'Oracle') => {
-    if (type === 'Oracle') {
+    if (type === 'Oracle' || (filteredOptions.length === 0 && search.length > 0)) {
       setIsOracleProcessing(true);
-      setOracleResponse('Oracle is consulting the Manifold spirits...');
+      setOracleResponse('CONSULTING ORACLE CORE...');
       
-      // Simulate Oracle Core Processing
+      const response = await oracle.process(search);
+      setOracleResponse(response.message);
+      
       setTimeout(() => {
-        setOracleResponse('PROMPT RECEIVED: "Create a 5x5 plate with a hole in the center"');
+        if (response.type === 'ADD_NODE') {
+          addNode(response.payload.type);
+          // Assuming the last added node is the one we want to update
+          // In a real app we'd get the ID from addNode return
+        }
+        
         setTimeout(() => {
-          addNode('Box');
-          // In a real implementation, we'd update params here too
-          setOracleResponse('ORACLE: Form manifested. Adjusting stratigraphy...');
-          setTimeout(() => {
-            setOpen(false);
-            setOracleResponse(null);
-            setIsOracleProcessing(false);
-          }, 1500);
+          setOpen(false);
+          setOracleResponse(null);
+          setIsOracleProcessing(false);
+          setSearch('');
         }, 1000);
-      }, 1500);
+      }, 1000);
       return;
     }
-    addNode(type);
+    addNode(type as NodeType);
     setOpen(false);
     setSearch('');
   };
+
+  if (!open) return null;
 
   return (
     <div
@@ -90,6 +117,21 @@ export default function CommandK() {
             onChange={(e) => {
               setSearch(e.target.value);
               setSelectedIndex(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (filteredOptions[selectedIndex]) {
+                  handleSelect(filteredOptions[selectedIndex].value);
+                } else if (search.length > 0) {
+                  handleSelect('Oracle');
+                }
+              }
+              if (e.key === 'ArrowDown') {
+                setSelectedIndex((s) => (s + 1) % Math.max(1, filteredOptions.length));
+              }
+              if (e.key === 'ArrowUp') {
+                setSelectedIndex((s) => (s - 1 + filteredOptions.length) % Math.max(1, filteredOptions.length));
+              }
             }}
             style={{
               width: '100%',
