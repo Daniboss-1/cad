@@ -1,111 +1,63 @@
-# Aether CAD: Digital Archaeology
+# Aether CAD 🌌
 
-Design as an excavation of form: **Aether CAD** is a next-generation parametric CAD application built with Next.js, Three.js, and Manifold-3D, based on the "Digital Archaeology" philosophy.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Engine: Manifold-3D](https://img.shields.io/badge/Engine-Manifold--3D-green)](https://github.com/elalish/manifold)
 
----
+**Aether CAD** is a 2026-era Agentic Parametric CAD platform designed to render legacy tools obsolete through real-time lifecycle simulation, swarm intelligence, and neural digital archaeology.
 
-## Table of Contents
-- [Vision](#vision-digital-archaeology)
-- [Roadmap](#4-phase-roadmap)
-- [Technical Stack](#technical-stack)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [License](#license)
+![Nexus Viewport](https://raw.githubusercontent.com/Daniboss-1/cad/main/docs/hero.png)
 
----
+## ✨ Core Pillars
 
-## Vision: Digital Archaeology
+### 1. Geometric Truth (Kernel-First)
+Unlike traditional CAD tools that rely on fragile mesh representation, Aether treats every shape as a sequence of **Manifold-3D WASM** commands. This ensures that every functional part is mathematically watertight and ready for simulation.
 
-In Aether CAD, every design is a temporal sequence of operations—a stratigraphy of form. We don't just build models; we excavate them from the digital void. The History Tree is your "Stratigraph" into the layers of your creation.
+### 2. Neural Digital Archaeology 🏛️
+Upload legacy PDF blueprints or PNG sketches. Aether's VLM pipeline parses visual intent into a sequence of kernel operations (Extrude, Revolve, Fillet), recovering parametric history from "dead" pixels.
 
----
+### 3. Supply-Chain Sentinel 🛰️
+Real-time integration with Octopart and Digi-Key APIs. The "Vibe Light" status component monitors part availability and pricing while you design, ensuring your assembly never hits a procurement bottleneck.
 
-## 4-Phase Roadmap
+### 4. Evolutionary Design Oracle 🔮
+Set your goals (Max Strength, Min Weight, Low Cost). The Oracle spawns variants of your part, iterating through thousands of parametric mutations to find the local maxima of engineering efficiency.
 
-### Phase 1: Core Modeling
-- **Basic Primitives**: Box, Sphere, Cylinder, Torus (high-fidelity mesh generation)
-- **Parametric Kernel**: Robust CSG operations (Union, Subtract, Intersect) powered by Manifold-3D
-- **Kernel Extensions**: 3D Fillets, advanced smoothing algorithms
-- **WASM Lifecycle**: Strict memory management, optimized reconstruction loops
+## 🚀 Technical Stack
 
-### Phase 2: Archaeology Engine
-- **Stratigraphy (History Tree)**: Non-destructive timeline of operations
-- **Digital Archaeology Pipeline**: PDF-to-CAD extraction with confidence heatmaps and audit trails
-- **Vector Reconstruction**: Advanced OCR and vectorization of industrial blueprints
-- **Command-K Nexus**: Spotlight-style search shell for rapid actions
+- **Framework**: Next.js 14 (App Router)
+- **Architecture**: Feature-Sliced Design (FSD)
+- **Kernel**: Manifold-3D (WebAssembly)
+- **Visualization**: Three.js + React Three Fiber
+- **Intelligence**: Vision-Language Model (VLM) Orchestrator
+- **State**: Zustand (High-frequency history tree)
 
-### Phase 3: Manufacturing Intelligence
-- **Constraint Solver**: Simulation-based validation of geometry
-- **Supply-Chain Sentinel**: Integrated BOM, cost estimation, lead-time tracking
-- **PBR Visualization**: Industrial-grade rendering
-- **Audit Trails**: Full geometric mod history for compliance
+## 🛠️ Development Setup
 
-### Phase 4: Polish & Launch
-- **UX Polish**: Modern UI, CAD ergonomics
-- **STEP Export**: Integration with OpenCASCADE
-- **Documentation**: User & API docs
-- **Performance Tuning**: Large assembly optimization
-
----
-
-## Technical Stack
-
-- **Framework:** Next.js
-- **3D Engine:** Three.js (Rendering) & Manifold-3D (CSG Kernel)
-- **State Management:** Zustand
-- **Styling:** Tailwind CSS & Radix UI (Glassmorphism)
-- **AI/Automation:** Tesseract.js & PDF.js for blueprint analysis
-
-**Language Composition:**
-- TypeScript: 97.8%
-- CSS: 1.2%
-- JavaScript: 1%
-
----
-
-## Getting Started
-
-1. **Clone the repository:**
-   ```sh
-   git clone https://github.com/Daniboss-1/cad.git
-   cd cad
-   ```
-
-2. **Install dependencies:**
-   ```sh
+1. **Install Dependencies**:
+   ```bash
    npm install
-   # or
-   yarn install
    ```
 
-3. **Run in development:**
-   ```sh
+2. **Run Local Dev**:
+   ```bash
    npm run dev
-   # or
-   yarn dev
    ```
 
----
+3. **Build for Production**:
+   ```bash
+   npm run build
+   ```
 
-## Usage
+## 📝 Roadmap progress (The 100-Task Manifest)
 
-- Open `http://localhost:3000` in your browser after starting the dev server
-- Explore available modeling primitives and the history tree
-- Check [`TODO.md`](./TODO.md) for upcoming features and planned tasks
+Progress is tracked in [TODO.md](./TODO.md).
 
----
-
-## License
-
-MIT License - See LICENSE file for details
-
----
-
-## Support
-
-- File issues for bugs, discussions, and feature requests
-- For roadmap/tasks, see [`TODO.md`](./TODO.md)
+- [x] Phase 0.5: Infrastructure (FSD Refactor, Manifold Registry)
+- [x] Phase 1: Boolean Mastery (Extrude, Revolve, Shell)
+- [x] Phase 2: Neural Archaeology (PDF Blueprint Parsing)
+- [ ] Phase 3: GMS Twin (Wall Thickness, Tool Accessibility)
+- [ ] Phase 4: Evolutionary Oracle (Variant Spawning)
+- [ ] Phase 5: Time-Machine (Degradation Simulation)
 
 ---
 
-**Maintained by Daniboss-1**
+Built with ❤️ by Aether Labs. Render the past obsolete.

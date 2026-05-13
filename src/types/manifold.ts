@@ -28,6 +28,7 @@ export interface ManifoldStatic {
   sphere(radius: number, segments?: number): ManifoldInstance;
   torus(radius: number, tube: number, radialSegments?: number, tubularSegments?: number): ManifoldInstance;
   extrude(section: CrossSectionInstance, height: number, nDivisions?: number, twistDegrees?: number, scale?: [number, number]): ManifoldInstance;
+  revolve(section: CrossSectionInstance, segments?: number): ManifoldInstance;
 }
 
 export interface CrossSectionStatic {

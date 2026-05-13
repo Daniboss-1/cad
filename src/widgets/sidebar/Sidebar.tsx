@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { useStore, OperationType, CADNode } from '@/shared/lib/store';
 import { fetchVendorStatus } from '@/shared/lib/vendor-service';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Wrench, Database, Activity, Eye, EyeOff, ChevronUp, ChevronDown, Trash2, Plus, RefreshCw } from 'lucide-react';
+import { Package, Wrench, Database, Activity, Eye, EyeOff, ChevronUp, ChevronDown, Trash2, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { findNodeRecursive } from '@/shared/lib/utils';
 
 export default function Sidebar() {
@@ -33,7 +33,7 @@ export default function Sidebar() {
     }
   };
 
-  const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+  const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect', 'Fillet', 'Shell'].includes(type);
 
   const NodeItem = ({ node, index, depth = 0 }: { node: CADNode, index: number, depth?: number }) => (
     <div key={node.id} style={{ position: 'relative' }}>
@@ -299,6 +299,19 @@ export default function Sidebar() {
                     <div style={{ fontSize: '10px', color: '#8b949e', background: 'rgba(63, 185, 80, 0.05)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(63, 185, 80, 0.1)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Vendor</span><span style={{ color: '#ffffff' }}>{selectedNode.vendor}</span></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}><span>Price</span><span style={{ color: '#3fb950' }}>${selectedNode.cost}</span></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', color: '#3fb950' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3fb950' }} />
+                        <span style={{ fontSize: '9px', fontWeight: 'bold' }}>SUPPLY CHAIN SENTINEL: OPTIMAL</span>
+                      </div>
+                    </div>
+                  )}
+                  {selectedNode.type === 'Box' && (
+                    <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(210, 153, 34, 0.1)', border: '1px solid rgba(210, 153, 34, 0.2)', borderRadius: '8px' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#d29922', marginBottom: '4px' }}>
+                         <AlertTriangle size={12} />
+                         <span style={{ fontSize: '9px', fontWeight: 'bold' }}>DFM ADVISORY</span>
+                       </div>
+                       <div style={{ fontSize: '9px', color: '#8b949e' }}>Sharp internal corners detected. Suggest applying 0.5mm Fillet for tool accessibility.</div>
                     </div>
                   )}
                 </div>

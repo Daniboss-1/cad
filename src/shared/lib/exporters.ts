@@ -6,8 +6,8 @@ export function exportToSTL(geometry: THREE.BufferGeometry, fileName: string = '
   const exporter = new STLExporter();
   const mesh = new THREE.Mesh(geometry);
   const result = exporter.parse(mesh, { binary: true });
-  
-  const blob = new Blob([result], { type: 'application/octet-stream' });
+
+  const blob = new Blob([result as any], { type: 'application/octet-stream' });
   saveBlob(blob, fileName);
 }
 

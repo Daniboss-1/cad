@@ -8,23 +8,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['three'],
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      crypto: false,
+      buffer: false,
+      stream: false,
+    };
+
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+
     if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-        buffer: false,
-        stream: false,
-      };
-
-      config.experiments = {
-        ...config.experiments,
-        asyncWebAssembly: true,
-      };
-
-      // Replace Node.js-specific require("node:module") calls in manifold-3d's bundled JS
       config.plugins.push(
         new webpack.NormalModuleReplacementPlugin(
           /^node:module$/,
@@ -32,6 +32,7 @@ const nextConfig = {
         )
       );
     }
+
     return config;
   },
 };

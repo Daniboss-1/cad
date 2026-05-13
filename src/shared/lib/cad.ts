@@ -57,6 +57,47 @@ export class ManifoldRegistry {
   }
 }
 
+// Worker Interface
+let worker: Worker | null = null;
+const pendingRequests = new Map<string, { resolve: (val: any) => void, reject: (err: any) => void }>();
+
+function getWorker(): Worker {
+  if (typeof window === 'undefined') return null as any;
+  if (worker) return worker;
+  worker = new Worker(new URL('./manifold.worker.ts', import.meta.url));
+  worker.onmessage = (e) => {
+    const { id, result, error } = e.data;
+    const pending = pendingRequests.get(id);
+    if (pending) {
+      if (error) pending.reject(new Error(error));
+      else pending.resolve(result);
+      pendingRequests.delete(id);
+    }
+  };
+  return worker;
+}
+
+export async function rebuildGeometryAsync(nodes: any[]): Promise<MeshData | null> {
+  const id = Math.random().toString(36).substring(7);
+  const w = getWorker();
+  if (!w) return null;
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, { resolve, reject });
+    w.postMessage({ type: 'REBUILD', nodes, id });
+  });
+}
+
+export async function exportSTEPAsync(nodes: any[]): Promise<any> {
+  const id = Math.random().toString(36).substring(7);
+  const w = getWorker();
+  if (!w) return null;
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, { resolve, reject });
+    w.postMessage({ type: 'EXPORT_STEP', nodes, id });
+  });
+}
+
+// Fallback / Sync methods if needed for small tasks
 let manifoldPromise: Promise<ManifoldModule> | null = null;
 
 async function ensureManifold(): Promise<ManifoldModule> {
@@ -77,23 +118,14 @@ export async function createBox(params: BoxParams, registry?: ManifoldRegistry):
 }
 
 export async function filletMesh(mesh: ManifoldInstance, radius: number, registry?: ManifoldRegistry): Promise<ManifoldInstance> {
-  // Manifold 2.x+ supports smoothing via the 'smooth' method or 'smoothOut'.
-  // For a general fillet simulation in the kernel:
   try {
     if ((mesh as any).smoothOut) {
       const result = (mesh as any).smoothOut(radius);
       return registry ? registry.register(result) : result;
     }
-
-    if ((mesh as any).smooth) {
-      // Some versions use smooth() with a refinement level
-      const result = (mesh as any).smooth(3);
-      return registry ? registry.register(result) : result;
-    }
   } catch (e) {
-    console.warn('Manifold fillet/smooth failed, falling back to original mesh', e);
+    console.warn('Manifold fillet/smooth failed', e);
   }
-
   return mesh;
 }
 

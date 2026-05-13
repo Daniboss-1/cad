@@ -1,4 +1,10 @@
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
 import { CADNode } from './store';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 export const findNodeRecursive = (nodes: CADNode[], id: string | null): CADNode | null => {
   if (!id) return null;
