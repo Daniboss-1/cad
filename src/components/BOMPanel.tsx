@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, CADNode } from '@/lib/store';
 import { fetchVendorStatus, VendorData } from '@/lib/vendor-service';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -36,12 +36,12 @@ export default function BOMPanel() {
     { name: 'ABS Plastic', density: 1.04, costPerKg: 3.5 },
   ];
 
-  const calculateVolume = (node: any): number => {
+  const calculateVolume = (node: CADNode): number => {
     if (!node.visible) return 0;
     
     let baseVolume = 0;
-    if (node.type === 'Group' && node.children) {
-      node.children.forEach((child: any) => {
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child) => {
         const childVol = calculateVolume(child);
         if (child.operation === 'Subtract') {
           baseVolume -= childVol;
@@ -75,8 +75,8 @@ export default function BOMPanel() {
     return Math.max(0, baseVolume * s[0] * s[1] * s[2]);
   };
 
-  const flattenNodes = (nodes: any[]): any[] => {
-    let result: any[] = [];
+  const flattenNodes = (nodes: CADNode[]): CADNode[] => {
+    let result: CADNode[] = [];
     nodes.forEach(n => {
       result.push(n);
       if (n.children) {
@@ -106,44 +106,52 @@ export default function BOMPanel() {
     };
   });
 
-  const totalCost = bomItems.reduce((acc, item) => acc + parseFloat(item.cost), 0);
+  const totalCost = bomItems.reduce((acc, item) => acc + (parseFloat(item.cost as string) || 0), 0);
   const totalWeight = bomItems.reduce((acc, item) => acc + parseFloat(item.weight), 0);
 
   return (
     <motion.div
-    initial={{ x: -100, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    className="glassmorphism animate-luxury"
-    style={{
-    position: 'absolute',
-    bottom: '20px',
-    left: '20px',
-    width: '400px',
-    borderRadius: '12px',
-    padding: '16px',
-    color: '#c9d1d9',
-    fontFamily: 'monospace',
-    fontSize: '11px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-    zIndex: 5,
-    maxHeight: '400px',
-    overflowY: 'auto'
-    }}>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRefreshing ? '#d29922' : '#3fb950', animation: isRefreshing ? 'pulse 1s infinite' : 'none' }} />
-          <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '0.5px' }}>SUPPLY-CHAIN SENTINEL</span>
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      className="glassmorphism animate-luxury"
+      style={{
+        position: 'absolute',
+        bottom: '24px',
+        left: '344px',
+        width: '400px',
+        borderRadius: '16px',
+        padding: '20px',
+        color: '#c9d1d9',
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+        zIndex: 5,
+        maxHeight: '40vh',
+        overflowY: 'auto',
+        border: '1px solid rgba(48, 54, 61, 0.5)'
+      }}
+    >
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ 
+            width: '8px', 
+            height: '8px', 
+            borderRadius: '50%', 
+            background: isRefreshing ? '#d29922' : '#3fb950', 
+            boxShadow: `0 0 10px ${isRefreshing ? '#d29922' : '#3fb950'}`
+          }} />
+          <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '1px' }}>SUPPLY-CHAIN SENTINEL</span>
         </div>
-        <span style={{ color: '#8b949e', fontSize: '9px' }}>{bomItems.length} ACTIVE MANIFOLDS</span>
+        <div style={{ color: '#8b949e', fontSize: '9px', fontWeight: 600 }}>{bomItems.length} ACTIVE MANIFOLDS VERIFIED</div>
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ textAlign: 'left', color: '#8b949e', textTransform: 'uppercase', fontSize: '9px' }}>
-            <th style={{ padding: '8px 0' }}>Part Spec</th>
-            <th>Vendor</th>
-            <th>Availability</th>
-            <th style={{ textAlign: 'right' }}>Unit Cost</th>
+          <tr style={{ textAlign: 'left', color: '#484f58', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.5px' }}>
+            <th style={{ paddingBottom: '12px' }}>Part Spec</th>
+            <th style={{ paddingBottom: '12px' }}>Vendor</th>
+            <th style={{ paddingBottom: '12px' }}>ETA</th>
+            <th style={{ paddingBottom: '12px', textAlign: 'right' }}>Cost</th>
           </tr>
         </thead>
         <tbody>
@@ -151,37 +159,46 @@ export default function BOMPanel() {
             {bomItems.map((item) => (
               <motion.tr 
                 key={item.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{ borderTop: '1px solid #21262d' }}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                style={{ borderTop: '1px solid rgba(48, 54, 61, 0.3)' }}
               >
-                <td style={{ padding: '10px 0' }}>
-                  <div style={{ fontWeight: 'bold', color: '#f0f6fc' }}>{item.name}</div>
+                <td style={{ padding: '12px 0' }}>
+                  <div style={{ fontWeight: 600, color: '#f0f6fc' }}>{item.name}</div>
                   <div style={{ fontSize: '9px', color: '#8b949e' }}>{item.type} | {item.material}</div>
                 </td>
                 <td style={{ color: '#8b949e' }}>{item.vendor}</td>
                 <td>
-                  <div style={{ color: item.leadTime === 'Stock' || item.leadTime === '2 days' ? '#3fb950' : '#d29922' }}>
-                  {item.leadTime}
-                  {parseFloat(item.leadTime) > 3 && (
-                  <span style={{ marginLeft: '4px', color: '#f85149', fontSize: '8px' }}>⚠️ DELAY RISK</span>
-                  )}
+                  <div style={{ color: item.leadTime === 'Stock' || item.leadTime === '2 days' ? '#3fb950' : '#d29922', fontWeight: 600 }}>
+                    {item.leadTime}
                   </div>
-                  {item.stock !== undefined && <div style={{ fontSize: '9px', opacity: 0.6 }}>{item.stock} in stock</div>}
-                  </td>
-
+                  {item.stock !== undefined && <div style={{ fontSize: '8px', opacity: 0.6 }}>{item.stock} IN STOCK</div>}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 700, color: '#f0f6fc' }}>
+                  ${item.cost}
+                </td>
               </motion.tr>
             ))}
           </AnimatePresence>
         </tbody>
       </table>
 
-      <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '2px solid #30363d', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-        <span>TOTAL ESTIMATE</span>
+      <div style={{ 
+        marginTop: '16px', 
+        paddingTop: '16px', 
+        borderTop: '2px solid rgba(48, 54, 61, 0.5)', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-end'
+      }}>
+        <div>
+          <div style={{ color: '#8b949e', fontSize: '9px', marginBottom: '4px' }}>ESTIMATED TOTAL MASS</div>
+          <div style={{ fontWeight: 700, fontSize: '13px' }}>{totalWeight.toFixed(3)} KG</div>
+        </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ color: '#8b949e' }}>{totalWeight.toFixed(3)} KG</div>
-          <div style={{ color: '#3fb950', fontSize: '14px' }}>${totalCost.toFixed(2)}</div>
+          <div style={{ color: '#8b949e', fontSize: '9px', marginBottom: '4px' }}>TOTAL COST</div>
+          <div style={{ color: '#3fb950', fontSize: '18px', fontWeight: 800 }}>${totalCost.toFixed(2)}</div>
         </div>
       </div>
     </motion.div>

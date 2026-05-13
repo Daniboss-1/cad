@@ -10,12 +10,25 @@ export interface Transform {
   scale: [number, number, number];
 }
 
+export interface ExtrusionParams {
+  paths: number[][][];
+  height: number;
+}
+
+export type NodeParams = 
+  | BoxParams 
+  | SphereParams 
+  | CylinderParams 
+  | TorusParams 
+  | ExtrusionParams 
+  | Record<string, never>;
+
 export interface CADNode {
   id: string;
   name: string;
   type: NodeType;
   operation: OperationType;
-  params: any;
+  params: NodeParams;
   transform: Transform;
   visible: boolean;
   material?: string;
@@ -37,10 +50,10 @@ interface CADState {
   nodes: CADNode[];
   selectedNodeId: string | null;
   messages: AgentMessage[];
-  addNode: (type: NodeType, parentId?: string, initialParams?: any, initialTransform?: Partial<Transform>) => void;
+  addNode: (type: NodeType, parentId?: string, initialParams?: NodeParams, initialTransform?: Partial<Transform>) => void;
   removeNode: (id: string) => void;
   updateNode: (id: string, updates: Partial<CADNode>) => void;
-  updateNodeParams: (id: string, params: any) => void;
+  updateNodeParams: (id: string, params: Partial<NodeParams>) => void;
   updateNodeTransform: (id: string, transform: Partial<Transform>) => void;
   selectNode: (id: string | null) => void;
   moveNode: (id: string, direction: 'up' | 'down') => void;
@@ -55,7 +68,7 @@ const getDefaultTransform = (): Transform => ({
   scale: [1, 1, 1],
 });
 
-const getDefaultParams = (type: NodeType) => {
+export const getDefaultParams = (type: NodeType): NodeParams => {
   switch (type) {
     case 'Box':
       return { width: 1, height: 1, depth: 1, center: true };
@@ -71,7 +84,9 @@ const getDefaultParams = (type: NodeType) => {
     case 'Intersect':
       return {};
     case 'Extrusion':
-      return { paths: [[[0,0],[10,0],[10,10],[0,10]]], height: 1 };
+      return { paths: [[[0, 0], [10, 0], [10, 10], [0, 10]]], height: 1 };
+    default:
+      return {};
   }
 };
 
@@ -160,7 +175,7 @@ export const useStore = create<CADState>((set) => ({
     set((state) => {
       const updateRecursive = (nodes: CADNode[]): CADNode[] => {
         return nodes.map((n) => {
-          if (n.id === id) return { ...n, params: { ...n.params, ...params } };
+          if (n.id === id) return { ...n, params: { ...n.params, ...params } as NodeParams };
           if (n.children) return { ...n, children: updateRecursive(n.children) };
           return n;
         });

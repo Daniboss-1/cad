@@ -10,14 +10,32 @@ export interface PDFArchaeologyResult {
   dimensions: { text: string, value: number, unit: string }[];
 }
 
-export async function parseDigitalArchaeology(file: File): Promise<PDFArchaeologyResult> {
-  const pdfjs = await import('pdfjs-dist');
-  
-  // Set worker path - using a CDN that matches the version in package.json
-  const version = '5.7.284';
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
+let pdfjsInstance: any = null;
+let tesseractWorker: any = null;
 
-  const { createWorker } = await import('tesseract.js');
+async function getPDFJS() {
+  if (!pdfjsInstance) {
+    const pdfjs = await import('pdfjs-dist');
+    const version = '5.7.284';
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
+    pdfjsInstance = pdfjs;
+  }
+  return pdfjsInstance;
+}
+
+async function getTesseractWorker() {
+  if (!tesseractWorker) {
+    const { createWorker } = await import('tesseract.js');
+    tesseractWorker = await createWorker('eng');
+  }
+  return tesseractWorker;
+}
+
+export async function parseDigitalArchaeology(
+  file: File, 
+  options: { deepScan?: boolean } = {}
+): Promise<PDFArchaeologyResult> {
+  const pdfjs = await getPDFJS();
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
@@ -27,17 +45,20 @@ export async function parseDigitalArchaeology(file: File): Promise<PDFArchaeolog
   const paths: ExtractedPath[] = [];
   let currentPath: [number, number][] = [];
 
-  // Robust vector extraction from PDF operators
+  const addPath = (p: [number, number][]) => {
+    if (p.length > 1) {
+      paths.push({ points: [...p], type: 'line' });
+    }
+  };
+
   for (let i = 0; i < operatorList.fnArray.length; i++) {
     const fn = operatorList.fnArray[i];
     const args = operatorList.argsArray[i];
 
     switch (fn) {
       case pdfjs.OPS.moveTo:
-        if (currentPath.length > 0) {
-          paths.push({ points: currentPath, type: 'line' });
-        }
-        currentPath = [[args[0], -args[1]]]; // Flip Y for CAD space
+        addPath(currentPath);
+        currentPath = [[args[0], -args[1]]];
         break;
       case pdfjs.OPS.lineTo:
         currentPath.push([args[0], -args[1]]);
@@ -45,55 +66,57 @@ export async function parseDigitalArchaeology(file: File): Promise<PDFArchaeolog
       case pdfjs.OPS.curveTo: {
         const [cp1x, cp1y, cp2x, cp2y, x, y] = args;
         const last = currentPath[currentPath.length - 1] || [0, 0];
-        // Adaptive sampling for bezier
-        const steps = 10;
+        const steps = 20; // Increased fidelity
         for (let t = 1/steps; t <= 1; t += 1/steps) {
-          const cx = Math.pow(1-t, 3) * last[0] + 3 * Math.pow(1-t, 2) * t * cp1x + 3 * (1-t) * Math.pow(t, 2) * cp2x + Math.pow(t, 3) * x;
-          const cy = Math.pow(1-t, 3) * last[1] + 3 * Math.pow(1-t, 2) * t * (-cp1y) + 3 * (1-t) * Math.pow(t, 2) * (-cp2y) + Math.pow(t, 3) * (-y);
+          const invT = 1 - t;
+          const cx = Math.pow(invT, 3) * last[0] + 3 * Math.pow(invT, 2) * t * cp1x + 3 * invT * Math.pow(t, 2) * cp2x + Math.pow(t, 3) * x;
+          const cy = Math.pow(invT, 3) * last[1] + 3 * Math.pow(invT, 2) * t * (-cp1y) + 3 * invT * Math.pow(t, 2) * (-cp2y) + Math.pow(t, 3) * (-y);
           currentPath.push([cx, cy]);
         }
         break;
       }
       case pdfjs.OPS.closePath:
         if (currentPath.length > 0) {
-          currentPath.push(currentPath[0]);
-          paths.push({ points: currentPath, type: 'line' });
+          const first = currentPath[0];
+          const last = currentPath[currentPath.length - 1];
+          if (first[0] !== last[0] || first[1] !== last[1]) {
+            currentPath.push([first[0], first[1]]);
+          }
+          addPath(currentPath);
           currentPath = [];
         }
         break;
     }
   }
-  if (currentPath.length > 0) {
-    paths.push({ points: currentPath, type: 'line' });
-  }
+  addPath(currentPath);
 
-  // OCR for dimensions with high-fidelity rendering
-  const viewport = page.getViewport({ scale: 4.0 }); // Higher scale for better OCR
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  canvas.height = viewport.height;
-  canvas.width = viewport.width;
-  
-  await page.render({ canvasContext: context!, viewport, canvas }).promise;
-  
-  const worker = await createWorker('eng');
-  const { data: { text } } = await worker.recognize(canvas);
-  await worker.terminate();
-
-  // Advanced dimension regex extraction
   const dimensions: { text: string, value: number, unit: string }[] = [];
-  const dimRegex = /(\d+(\.\d+)?)\s*(mm|cm|in|m|deg|°)/gi;
-  let match;
-  while ((match = dimRegex.exec(text)) !== null) {
-    dimensions.push({
-      text: match[0],
-      value: parseFloat(match[1]),
-      unit: match[3].toLowerCase()
-    });
+
+  if (options.deepScan) {
+    const viewport = page.getViewport({ scale: 4.0 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    await page.render({ canvasContext: context!, viewport, canvas }).promise;
+    
+    const worker = await getTesseractWorker();
+    const { data: { text } } = await worker.recognize(canvas);
+
+    const dimRegex = /(\d+(\.\d+)?)\s*(mm|cm|in|m|deg|°)/gi;
+    let match;
+    while ((match = dimRegex.exec(text)) !== null) {
+      dimensions.push({
+        text: match[0],
+        value: parseFloat(match[1]),
+        unit: match[3].toLowerCase()
+      });
+    }
   }
 
   return { 
-    paths: paths.filter(p => p.points.length > 2), // Filter out noise
+    paths: paths.filter(p => p.points.length >= 3),
     dimensions 
   };
 }
