@@ -10,15 +10,18 @@ Design as an excavation of form: **Aether CAD** is a next-generation parametric 
 - [Technical Stack](#technical-stack)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ## Vision: Digital Archaeology
-In Aether CAD, every design is a temporal sequence of operations—a stratigraphy of form. We don't just build models; we excavate them from the digital void. The History Tree is your "Stratigraphy Log," documenting every transformation and operation.
+
+In Aether CAD, every design is a temporal sequence of operations—a stratigraphy of form. We don't just build models; we excavate them from the digital void. The History Tree is your "Stratigraph" into the layers of your creation.
+
+---
 
 ## 4-Phase Roadmap
+
 ### Phase 1: Core Modeling
 - **Basic Primitives**: Box, Sphere, Cylinder, Torus (high-fidelity mesh generation)
 - **Parametric Kernel**: Robust CSG operations (Union, Subtract, Intersect) powered by Manifold-3D
@@ -46,52 +49,63 @@ In Aether CAD, every design is a temporal sequence of operations—a stratigraph
 ---
 
 ## Technical Stack
+
 - **Framework:** Next.js
 - **3D Engine:** Three.js (Rendering) & Manifold-3D (CSG Kernel)
-- **State:** Zustand
+- **State Management:** Zustand
 - **Styling:** Tailwind CSS & Radix UI (Glassmorphism)
 - **AI/Automation:** Tesseract.js & PDF.js for blueprint analysis
+
+**Language Composition:**
+- TypeScript: 97.8%
+- CSS: 1.2%
+- JavaScript: 1%
 
 ---
 
 ## Getting Started
 
 1. **Clone the repository:**
-    ```sh
-    git clone https://github.com/Daniboss-1/cad.git
-    cd cad
-    ```
+   ```sh
+   git clone https://github.com/Daniboss-1/cad.git
+   cd cad
+   ```
+
 2. **Install dependencies:**
-    ```sh
-    npm install
-    # or
-    yarn install
-    ```
+   ```sh
+   npm install
+   # or
+   yarn install
+   ```
+
 3. **Run in development:**
-    ```sh
-    npm run dev
-    # or
-    yarn dev
-    ```
-
-## Usage
-- Open `http://localhost:3000` in your browser after starting the dev server.
-- Explore available modeling primitives and the history tree.
-- Check [`TODO.md`](./TODO.md) for upcoming features and planned tasks.
-
-## Contributing
-- Fork the repo and create feature branches from `main`.
-- Follow Feature-Sliced Design (FSD) structure—see architecture in codebase.
-- Run `npm run lint` and `npm run format` before submitting a PR.
-- All contributions and feedback welcome! Open an issue or PR for discussion.
-
-## License
-Add a license here if you haven’t yet (e.g., MIT, Apache-2.0, GPL-3.0); update this section after choosing a license.
-
-## Community & Support
-- File issues for bugs, discussions, and feature requests.
-- For roadmap/tasks, see [`TODO.md`](./TODO.md).
+   ```sh
+   npm run dev
+   # or
+   yarn dev
+   ```
 
 ---
 
-*Project maintained by [Daniboss-1](https://github.com/Daniboss-1).*
+## Usage
+
+- Open `http://localhost:3000` in your browser after starting the dev server
+- Explore available modeling primitives and the history tree
+- Check [`TODO.md`](./TODO.md) for upcoming features and planned tasks
+
+---
+
+## License
+
+MIT License - See LICENSE file for details
+
+---
+
+## Support
+
+- File issues for bugs, discussions, and feature requests
+- For roadmap/tasks, see [`TODO.md`](./TODO.md)
+
+---
+
+**Maintained by Daniboss-1**

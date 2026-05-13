@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import * as THREE from 'three';
 import { 
@@ -10,7 +10,7 @@ import {
   createTorus, 
   filletMesh,
   extrude,
-  unionMesh,
+  unionMesh, 
   subtractMesh,
   intersectMesh,
   translateMesh,
@@ -19,19 +19,19 @@ import {
   getMeshData, 
   MeshData,
   ManifoldRegistry
-} from '@/shared/lib/cad';
-import { meshToBufferGeometry } from '@/shared/lib/mesh-utils';
+} from '@/lib/cad';
+import { meshToBufferGeometry } from '@/lib/mesh-utils';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { useStore, CADNode } from '@/shared/lib/store';
-import { findNodeRecursive } from '@/shared/lib/utils';
+import { useStore, CADNode } from '@/lib/store';
+import { findNodeRecursive } from '@/lib/utils';
 import { ManifoldInstance } from '@/types/manifold';
 
-const Sidebar = dynamic(() => import('@/widgets/sidebar/Sidebar'), { ssr: false });
-const CommandK = dynamic(() => import('@/features/command-k/CommandK'), { ssr: false });
-const BOMPanel = dynamic(() => import('@/widgets/bom/BOMPanel'), { ssr: false });
+const Sidebar = dynamic(() => import('@/components/Sidebar'), { ssr: false });
+const CommandK = dynamic(() => import('@/components/CommandK'), { ssr: false });
+const BOMPanel = dynamic(() => import('@/components/BOMPanel'), { ssr: false });
 
-const Viewport = dynamic(() => import('@/entities/geometry/Viewport'), {
+const Viewport = dynamic(() => import('@/components/Viewport'), {
   ssr: false,
   loading: () => (
     <div
@@ -58,6 +58,7 @@ export default function Home() {
   const [simMode, setSimMode] = useState(false);
   const nodes = useStore((state) => state.nodes);
   const selectedNodeId = useStore((state) => state.selectedNodeId);
+  const updateNodeTransform = useStore((state) => state.updateNodeTransform);
 
   const selectedNode = findNodeRecursive(nodes, selectedNodeId);
 
@@ -97,19 +98,20 @@ export default function Home() {
   const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    
     setLoading(true);
     setStatus('Digital Archaeology in progress...');
     try {
-      const { parseDigitalArchaeology } = await import('@/shared/lib/pdf-parser');
+      const { parseDigitalArchaeology } = await import('@/lib/pdf-parser');
       const result = await parseDigitalArchaeology(file);
       useStore.getState().setArchaeologyResult(result);
-
+      
       // Lift paths to CAD
-      result.paths.forEach((path) => {
+      result.paths.forEach((path, i) => {
         const height = result.dimensions[0]?.value || 10;
+        const confidence = result.dimensions[0]?.confidence || 1.0;
         const manifoldPath = [path.points.map(p => [p[0], p[1]])];
-        useStore.getState().addNode('Extrusion', undefined, { paths: manifoldPath, height }, { position: [0, 0, 0], rotation: [0,0,0], scale: [1,1,1] });
+        useStore.getState().addNode('Extrusion', undefined, { paths: manifoldPath, height }, { position: [0, 0, 0] });
       });
       console.log('Archaeology Audit Trail:', result.auditTrail);
     } catch (err) {
@@ -158,24 +160,24 @@ export default function Home() {
               } else {
                 next = await unionMesh(current, childMesh, registry);
               }
-
+              
               // Memory cleanup for intermediate results
-              if (current && current !== next) {
+              if (current !== next) {
                 registry.unregister(current);
                 current.delete();
               }
-              if (childMesh && childMesh !== next) {
+              if (childMesh !== next) {
                 registry.unregister(childMesh);
                 childMesh.delete();
               }
               current = next;
             }
           }
-
+          
           if (node.type === 'Fillet' && current) {
             const radius = (node.params as any).radius || 0.1;
             const next = await filletMesh(current, radius, registry);
-            if (current && current !== next) {
+            if (current !== next) {
               registry.unregister(current);
               current.delete();
             }
@@ -205,7 +207,7 @@ export default function Home() {
           const { position, rotation, scale: scaleFactors } = node.transform;
           if (scaleFactors.some(s => s !== 1)) {
             const next = await scaleMesh(current, scaleFactors, registry);
-            if (current && current !== next) {
+            if (current !== next) {
               registry.unregister(current);
               current.delete();
             }
@@ -213,7 +215,7 @@ export default function Home() {
           }
           if (rotation.some(r => r !== 0)) {
             const next = await rotateMesh(current, rotation.map(r => r * Math.PI / 180) as [number, number, number], registry);
-            if (current && current !== next) {
+            if (current !== next) {
               registry.unregister(current);
               current.delete();
             }
@@ -221,7 +223,7 @@ export default function Home() {
           }
           if (position.some(p => p !== 0)) {
             const next = await translateMesh(current, position, registry);
-            if (current && current !== next) {
+            if (current !== next) {
               registry.unregister(current);
               current.delete();
             }
@@ -251,12 +253,12 @@ export default function Home() {
           } else {
             next = await unionMesh(finalResult, nodeMesh, registry);
           }
-
-          if (finalResult && finalResult !== next) {
+          
+          if (finalResult !== next) {
             registry.unregister(finalResult);
             finalResult.delete();
           }
-          if (nodeMesh && nodeMesh !== next) {
+          if (nodeMesh !== next) {
             registry.unregister(nodeMesh);
             nodeMesh.delete();
           }
@@ -319,9 +321,9 @@ export default function Home() {
           <div style={{ width: '24px', height: '24px', background: 'linear-gradient(135deg, #58a6ff, #1f6feb)', borderRadius: '6px' }} />
           <span style={{ color: '#ffffff', fontWeight: 800, letterSpacing: '2px', fontSize: '14px' }}>AETHER</span>
         </div>
-
+        
         <span style={{ opacity: 0.2 }}>|</span>
-
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ color: '#8b949e', textTransform: 'uppercase' }}>Kernel:</span>
           <span style={{ color: '#3fb950' }}>ACTIVE [WASM]</span>
@@ -346,11 +348,11 @@ export default function Home() {
             <span style={{ color: '#d29922', letterSpacing: '1px' }}>{status.toUpperCase()}</span>
           </div>
         )}
-
+        
         <div style={{ flex: 1 }} />
-
+        
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
+          <button 
             onClick={() => setSimMode(!simMode)}
             style={{
               background: simMode ? '#d29922' : 'rgba(48, 54, 61, 0.5)',
@@ -368,9 +370,9 @@ export default function Home() {
           >
             {simMode ? 'Exit Simulation' : 'Geometric Sim'}
           </button>
-
+          
           <div style={{ display: 'flex', background: 'rgba(48, 54, 61, 0.3)', borderRadius: '8px', padding: '2px', border: '1px solid rgba(240, 246, 252, 0.05)' }}>
-            <button
+            <button 
               onClick={exportSTL}
               style={{
                 background: 'transparent',
@@ -388,7 +390,7 @@ export default function Home() {
             >
               STL
             </button>
-            <button
+            <button 
               onClick={exportGLTF}
               style={{
                 background: 'transparent',
@@ -406,7 +408,7 @@ export default function Home() {
             >
               GLTF
             </button>
-            <button
+            <button 
               onClick={exportSTEP}
               style={{
                 background: 'transparent',
@@ -425,7 +427,7 @@ export default function Home() {
               STEP
             </button>
           </div>
-
+          
           <label
             style={{
               background: '#238636',
@@ -449,15 +451,10 @@ export default function Home() {
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
         <Sidebar />
-
+        
         <div style={{ flex: 1, position: 'relative', background: '#010409' }}>
-          <Viewport
-            geometry={geometry}
-            selectedNodeId={selectedNodeId}
-            selectedNode={selectedNode}
-            simMode={simMode}
-          />
-
+          <Viewport geometry={geometry} selectedNodeId={selectedNodeId} />
+          
           {selectedNode && (
             <div style={{
               position: 'absolute',
@@ -482,7 +479,7 @@ export default function Home() {
 
           {simMode && <BOMPanel />}
         </div>
-
+        
         <CommandK />
       </div>
 
@@ -504,7 +501,7 @@ export default function Home() {
         </div>
         <div>AETHER CAD v1.0.4-PRO</div>
       </footer>
-
+      
       <style jsx global>{`
         @keyframes spin {
           from { transform: rotate(0deg); }

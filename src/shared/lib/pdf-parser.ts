@@ -17,7 +17,7 @@ let tesseractWorker: any = null;
 async function getPDFJS() {
   if (!pdfjsInstance) {
     const pdfjs = await import('pdfjs-dist');
-    const version = '4.4.168'; // Consistent version
+    const version = '5.7.284';
     pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
     pdfjsInstance = pdfjs;
   }
@@ -33,21 +33,21 @@ async function getTesseractWorker() {
 }
 
 export async function parseDigitalArchaeology(
-  file: File,
+  file: File, 
   options: { deepScan?: boolean } = {}
 ): Promise<PDFArchaeologyResult> {
   const auditTrail: string[] = [];
   auditTrail.push(`Initialization: Started analysis of ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
-
+  
   const pdfjs = await getPDFJS();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   auditTrail.push(`PDF.js: Document loaded with ${pdf.numPages} page(s)`);
-
+  
   const page = await pdf.getPage(1);
   const operatorList = await page.getOperatorList();
   auditTrail.push(`PDF.js: Extracted ${operatorList.fnArray.length} operators from Page 1`);
-
+  
   const paths: ExtractedPath[] = [];
   let currentPath: [number, number][] = [];
 
@@ -64,7 +64,7 @@ export async function parseDigitalArchaeology(
     switch (fn) {
       case pdfjs.OPS.moveTo:
         addPath(currentPath);
-        currentPath = [[args[0], -args[1]]]; // Flip Y for CAD space
+        currentPath = [[args[0], -args[1]]];
         break;
       case pdfjs.OPS.lineTo:
         currentPath.push([args[0], -args[1]]);
@@ -72,7 +72,7 @@ export async function parseDigitalArchaeology(
       case pdfjs.OPS.curveTo: {
         const [cp1x, cp1y, cp2x, cp2y, x, y] = args;
         const last = currentPath[currentPath.length - 1] || [0, 0];
-        const steps = 20;
+        const steps = 20; 
         for (let t = 1/steps; t <= 1; t += 1/steps) {
           const invT = 1 - t;
           const cx = Math.pow(invT, 3) * last[0] + 3 * Math.pow(invT, 2) * t * cp1x + 3 * invT * Math.pow(t, 2) * cp2x + Math.pow(t, 3) * x;
@@ -106,9 +106,9 @@ export async function parseDigitalArchaeology(
     const context = canvas.getContext('2d');
     canvas.height = viewport.height;
     canvas.width = viewport.width;
-
-    await page.render({ canvasContext: context!, viewport }).promise;
-
+    
+    await page.render({ canvasContext: context!, viewport, canvas }).promise;
+    
     const worker = await getTesseractWorker();
     const { data: { words } } = await worker.recognize(canvas);
 
@@ -127,7 +127,7 @@ export async function parseDigitalArchaeology(
     auditTrail.push(`OCR: Extracted ${dimensions.length} dimensional annotations`);
   }
 
-  return {
+  return { 
     paths: paths.filter(p => p.points.length >= 3),
     dimensions,
     auditTrail

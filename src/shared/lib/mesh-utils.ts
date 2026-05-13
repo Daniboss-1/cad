@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshData } from '@/types/manifold';
+import { MeshData } from '../types/manifold';
 
 export function meshToBufferGeometry(mesh: MeshData): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();

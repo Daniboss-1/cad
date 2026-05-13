@@ -14,7 +14,7 @@ export async function fetchVendorStatus(sku: string): Promise<VendorData> {
 
   // Determinstic mock data based on SKU
   const hash = sku.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
+  
   return {
     sku,
     price: (hash % 100) + 0.99,

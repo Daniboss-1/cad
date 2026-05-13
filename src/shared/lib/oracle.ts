@@ -10,7 +10,7 @@ export interface Intent {
 
 export function parseIntent(input: string): Intent {
   const text = input.toLowerCase();
-
+  
   if (text.length < 3) return { type: 'UNKNOWN', message: 'Awaiting input...' };
 
   const transform: Partial<Transform> = {};
@@ -21,7 +21,7 @@ export function parseIntent(input: string): Intent {
 
   // Token-based parameter extraction
   const extractDims = (str: string) => {
-    const dims = str.match(/(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)/) ||
+    const dims = str.match(/(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)/) || 
                  str.match(/(\d+(?:\.\d+)?)\s*[x*]\s*(\d+(?:\.\d+)?)/) ||
                  str.match(/size\s*(\d+(?:\.\d+)?)/) ||
                  str.match(/(\d+(?:\.\d+)?)\s*units?/);
@@ -41,7 +41,7 @@ export function parseIntent(input: string): Intent {
         params = { width: s, height: s, depth: s, center: true };
       }
     }
-
+    
     return {
       type: 'ADD_NODE',
       nodeType: 'Box',
@@ -57,7 +57,7 @@ export function parseIntent(input: string): Intent {
     if (radiusMatch) {
       params.radius = parseFloat(radiusMatch[1]);
     }
-
+    
     return {
       type: 'ADD_NODE',
       nodeType: 'Sphere',
@@ -132,7 +132,7 @@ export interface AgentResponse {
 
 export class OracleCore {
   private static instance: OracleCore;
-
+  
   private constructor() {}
 
   public static getInstance(): OracleCore {
