@@ -9,11 +9,13 @@ import {
   createCylinder, 
   createTorus, 
   union, 
+  difference,
+  intersect,
   getMeshData, 
   MeshData 
 } from '@/lib/cad';
 import { meshToBufferGeometry } from '@/lib/mesh-utils';
-import { useStore } from '@/lib/store';
+import { useStore, CADNode } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import CommandK from '@/components/CommandK';
 
@@ -27,12 +29,12 @@ const Viewport = dynamic(() => import('@/components/Viewport'), {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#1a1a2e',
-        color: '#ffffff',
-        fontFamily: 'system-ui, sans-serif',
+        background: '#0d1117',
+        color: '#e8e8e8',
+        fontFamily: 'monospace',
       }}
     >
-      Loading CAD viewport...
+      LOADING NEXUS VIEWPORT...
     </div>
   ),
 });
@@ -51,50 +53,75 @@ export default function Home() {
     }
 
     setLoading(true);
-    setStatus('Rebuilding geometry...');
+    setStatus('Excavating form...');
 
-    const manifoldsToDelete: any[] = [];
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let finalResult: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buildRecursive = async (index: number): Promise<any> => {
+      if (index < 0) return null;
 
-      for (const node of nodes) {
-        if (!node.visible) continue;
+      const previous = await buildRecursive(index - 1);
+      const node = nodes[index];
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let currentManifold: any = null;
+      if (!node.visible) return previous;
+
+      // Create current primitive
+      let current: any = null;
+      try {
         switch (node.type) {
           case 'Box':
-            currentManifold = await createBox(node.params as any);
+            current = await createBox(node.params as any);
             break;
           case 'Sphere':
-            currentManifold = await createSphere(node.params as any);
+            current = await createSphere(node.params as any);
             break;
           case 'Cylinder':
-            currentManifold = await createCylinder(node.params as any);
+            current = await createCylinder(node.params as any);
             break;
           case 'Torus':
-            currentManifold = await createTorus(node.params as any);
+            current = await createTorus(node.params as any);
             break;
         }
 
-        if (currentManifold) {
-          if (!finalResult) {
-            finalResult = currentManifold;
-          } else {
-            const previousResult = finalResult;
-            finalResult = await union(previousResult, currentManifold);
-            manifoldsToDelete.push(previousResult);
-            manifoldsToDelete.push(currentManifold);
+        if (!previous) return current;
+
+        let result: any = null;
+        try {
+          switch (node.operation) {
+            case 'Add':
+              result = await union(previous, current);
+              break;
+            case 'Subtract':
+              result = await difference(previous, current);
+              break;
+            case 'Intersect':
+              result = await intersect(previous, current);
+              break;
+            default:
+              result = await union(previous, current);
           }
+          return result;
+        } finally {
+          // Clean up intermediates
+          if (previous && typeof previous.delete === 'function') previous.delete();
+          if (current && typeof current.delete === 'function') current.delete();
         }
+      } catch (err) {
+        console.error(`Error building node ${index}:`, err);
+        if (current && typeof current.delete === 'function') current.delete();
+        return previous;
       }
+    };
+
+    try {
+      const finalResult = await buildRecursive(nodes.length - 1);
 
       if (finalResult) {
         const meshData: MeshData = await getMeshData(finalResult);
         const bufferGeometry = meshToBufferGeometry(meshData);
         setGeometry(bufferGeometry);
-        manifoldsToDelete.push(finalResult);
+        if (finalResult && typeof finalResult.delete === 'function') {
+          finalResult.delete();
+        }
       } else {
         setGeometry(null);
       }
@@ -102,16 +129,6 @@ export default function Home() {
       console.error('Failed to rebuild geometry:', err);
       setStatus(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      // Clean up all manifolds
-      for (const m of manifoldsToDelete) {
-        try {
-          if (m && typeof m.delete === 'function') {
-            m.delete();
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
       setLoading(false);
     }
   }, [nodes]);
@@ -127,36 +144,36 @@ export default function Home() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#1a1a2e',
+        background: '#0d1117',
       }}
     >
       <header
         style={{
           height: '40px',
-          background: '#16213e',
-          borderBottom: '1px solid #0f3460',
+          background: '#161b22',
+          borderBottom: '1px solid #30363d',
           display: 'flex',
           alignItems: 'center',
           padding: '0 20px',
           color: '#e8e8e8',
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '14px',
+          fontFamily: 'monospace',
+          fontSize: '12px',
           fontWeight: 500,
           gap: '20px',
           zIndex: 10,
         }}
       >
-        <span style={{ color: '#4a90d9', fontWeight: 'bold' }}>Aether CAD</span>
-        <span style={{ opacity: 0.6 }}>|</span>
-        <span style={{ fontSize: '12px', opacity: 0.8 }}>Phase 0</span>
+        <span style={{ color: '#58a6ff', fontWeight: 'bold', letterSpacing: '1px' }}>AETHER CAD // NEXUS</span>
+        <span style={{ opacity: 0.3 }}>|</span>
+        <span style={{ opacity: 0.8, textTransform: 'uppercase' }}>Stratigraphy Mode</span>
         {loading && (
           <>
-            <span style={{ opacity: 0.6 }}>|</span>
-            <span style={{ color: '#4a90d9' }}>{status}</span>
+            <span style={{ opacity: 0.3 }}>|</span>
+            <span style={{ color: '#d29922' }}>{status}</span>
           </>
         )}
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: '12px', opacity: 0.5 }}>Press Cmd+K to add primitives</span>
+        <span style={{ opacity: 0.5 }}>[CMD+K] ADD PRIMITIVE</span>
       </header>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, position: 'relative' }}>
