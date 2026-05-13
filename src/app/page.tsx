@@ -20,10 +20,12 @@ import {
 } from '@/lib/cad';
 import { meshToBufferGeometry } from '@/lib/mesh-utils';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { useStore, CADNode } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import CommandK from '@/components/CommandK';
 import BOMPanel from '@/components/BOMPanel';
+import { parseDigitalArchaeology } from '@/lib/pdf-parser';
 
 const Viewport = dynamic(() => import('@/components/Viewport'), {
   ssr: false,
@@ -77,6 +79,40 @@ export default function Home() {
     link.href = URL.createObjectURL(blob);
     link.download = 'aether-export.stl';
     link.click();
+  };
+
+  const exportGLTF = () => {
+    if (!geometry) return;
+    const exporter = new GLTFExporter();
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x4a90d9 }));
+    exporter.parse(mesh, (gltf) => {
+      const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'aether-export.gltf';
+      link.click();
+    }, (err) => console.error(err));
+  };
+
+  const handlePDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setLoading(true);
+    setStatus('Digital Archaeology in progress...');
+    try {
+      const result = await parseDigitalArchaeology(file);
+      // Lift paths to CAD
+      result.paths.forEach((path, i) => {
+        const height = result.dimensions[0]?.value || 10;
+        const manifoldPath = [path.points.map(p => [p[0], p[1]])];
+        useStore.getState().addNode('Extrusion', undefined, { paths: manifoldPath, height });
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const rebuildGeometry = useCallback(async () => {
@@ -254,6 +290,20 @@ export default function Home() {
           </>
         )}
         <div style={{ flex: 1 }} />
+        <label style={{
+            background: '#30363d',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+            marginRight: '10px'
+          }}>
+          Excavate PDF
+          <input type="file" accept=".pdf" onChange={handlePDFUpload} style={{ display: 'none' }} />
+        </label>
         <button 
           onClick={() => setSimMode(!simMode)}
           style={{
@@ -282,10 +332,27 @@ export default function Home() {
             fontSize: '10px',
             fontWeight: 'bold',
             cursor: 'pointer',
+            textTransform: 'uppercase',
+            marginRight: '10px'
+          }}
+        >
+          STL
+        </button>
+        <button 
+          onClick={exportGLTF}
+          style={{
+            background: '#238636',
+            border: 'none',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
             textTransform: 'uppercase'
           }}
         >
-          Export STL
+          GLTF
         </button>
         <span style={{ opacity: 0.5, marginLeft: '10px' }}>[CMD+K] ADD PRIMITIVE</span>
       </header>

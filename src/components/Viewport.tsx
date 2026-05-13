@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { reachabilityVertexShader, reachabilityFragmentShader } from '@/shaders/reachability.glsl';
 
 interface ViewportProps {
   geometry: THREE.BufferGeometry | null;
@@ -44,21 +45,26 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
     canvas.style.height = '100%';
     container.appendChild(canvas);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 1.2;
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(5, 10, 7.5);
-    scene.add(directionalLight);
+    const pointLight = new THREE.PointLight(0xffffff, 100);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
 
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
-    directionalLight2.position.set(-5, -5, -5);
-    scene.add(directionalLight2);
+    const spotLight = new THREE.SpotLight(0x58a6ff, 50);
+    spotLight.position.set(-5, 10, -5);
+    scene.add(spotLight);
 
     const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
     scene.add(gridHelper);
@@ -125,25 +131,26 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
 
     if (!geometry) return;
 
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x4a90d9,
-      metalness: 0.3,
-      roughness: 0.4,
-    });
+    let material: THREE.Material;
 
     if (simMode) {
-      material.onBeforeCompile = (shader) => {
-        shader.fragmentShader = shader.fragmentShader.replace(
-          `#include <color_fragment>`,
-          `
-          #include <color_fragment>
-          float dotProduct = dot(vNormal, vec3(0.0, 1.0, 0.0));
-          if (dotProduct < 0.2) { // Highlight overhangs and steep walls
-             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.2, 0.2), 0.8);
-          }
-          `
-        );
-      };
+      material = new THREE.ShaderMaterial({
+        uniforms: {
+          toolVector: { value: new THREE.Vector3(0, 1, 0) }
+        },
+        vertexShader: reachabilityVertexShader,
+        fragmentShader: reachabilityFragmentShader,
+      });
+    } else {
+      material = new THREE.MeshPhysicalMaterial({
+        color: 0x2c3e50,
+        metalness: 0.9,
+        roughness: 0.1,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        reflectivity: 1.0,
+        envMapIntensity: 1.0,
+      });
     }
 
     const mesh = new THREE.Mesh(geometry, material);

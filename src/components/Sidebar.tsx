@@ -2,7 +2,10 @@
 
 import React, { useRef } from 'react';
 import { useStore, OperationType } from '@/lib/store';
-import { parsePDFPaths } from '@/lib/pdf-parser';
+import { parseDigitalArchaeology } from '@/lib/pdf-parser';
+import { fetchVendorStatus } from '@/lib/vendor-service';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Package, Tool, Database, Activity } from 'lucide-react';
 
 export default function Sidebar() {
   const { nodes, selectedNodeId, selectNode, removeNode, updateNode, updateNodeParams, updateNodeTransform, moveNode, addNode } = useStore();
@@ -139,16 +142,21 @@ export default function Sidebar() {
   );
 
   return (
-    <div
+    <motion.div
+      initial={{ x: 300, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: 'spring', damping: 20, stiffness: 100 }}
       style={{
         width: '320px',
-        background: '#0d1117',
-        borderLeft: '1px solid #30363d',
+        background: 'rgba(13, 17, 23, 0.8)',
+        backdropFilter: 'blur(20px)',
+        borderLeft: '1px solid rgba(48, 54, 61, 0.5)',
         display: 'flex',
         flexDirection: 'column',
         color: '#c9d1d9',
         fontFamily: 'monospace',
         fontSize: '13px',
+        zIndex: 10,
       }}
     >
       {/* History Tree / Stratigraphy */}
@@ -158,8 +166,12 @@ export default function Sidebar() {
           fontSize: '11px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
+          <Database size={14} />
           Stratigraphy
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -177,8 +189,12 @@ export default function Sidebar() {
           fontSize: '11px', 
           color: '#8b949e', 
           textTransform: 'uppercase',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
+          <Tool size={14} />
           Parameters
         </h3>
         {selectedNode ? (
@@ -368,10 +384,38 @@ export default function Sidebar() {
 
             {/* Phase 3: Metadata (Live BOM) */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Package size={12} />
                 Metadata (Supply-Chain Sentinel)
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>SKU / PART NUMBER</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={selectedNode.sku || ''}
+                      placeholder="e.g. MC-94459"
+                      onChange={(e) => updateNode(selectedNode.id, { sku: e.target.value })}
+                      style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', padding: '8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'monospace' }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (selectedNode.sku) {
+                          const data = await fetchVendorStatus(selectedNode.sku);
+                          updateNode(selectedNode.id, { 
+                            vendor: data.vendor,
+                            cost: data.price,
+                            leadTime: data.leadTime
+                          });
+                        }
+                      }}
+                      style={{ background: '#21262d', border: '1px solid #30363d', color: '#58a6ff', borderRadius: '6px', padding: '0 8px', cursor: 'pointer' }}
+                    >
+                      Sync
+                    </button>
+                  </div>
+                </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '10px', color: '#8b949e', marginBottom: '4px' }}>MATERIAL</label>
                   <input
@@ -387,7 +431,8 @@ export default function Sidebar() {
 
             {/* Phase 4: Manufacturing Sim */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Activity size={12} />
                 GMS Twin (Manufacturing Sim)
               </label>
               <div style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
@@ -408,7 +453,8 @@ export default function Sidebar() {
 
             {/* Phase 2: PDF Archaeological Dig */}
             <div style={{ borderTop: '1px solid #30363d', paddingTop: '20px', marginBottom: '40px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#8b949e', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <Database size={12} />
                 Digital Archaeology (PDF-to-CAD)
               </label>
               <input 
@@ -419,8 +465,10 @@ export default function Sidebar() {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const paths = await parsePDFPaths(await file.arrayBuffer());
-                    addNode('Extrusion', undefined, { paths, height: 1 });
+                    const result = await parseDigitalArchaeology(file);
+                    result.paths.forEach(p => {
+                      addNode('Extrusion', undefined, { paths: [p.points], height: 1 });
+                    });
                   }
                 }}
               />
@@ -457,6 +505,6 @@ export default function Sidebar() {
       }}>
         AETHER CAD v0.1.0-alpha
       </div>
-    </div>
+    </motion.div>
   );
 }
