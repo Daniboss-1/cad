@@ -93,9 +93,11 @@ export default function Home() {
     const buildNode = async (node: CADNode): Promise<any> => {
       if (!node.visible) return null;
 
+      const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+
       let current: any = null;
       try {
-        if (node.type === 'Group' && node.children) {
+        if (isContainer(node.type) && node.children) {
           for (const child of node.children) {
             const childMesh = await buildNode(child);
             if (!childMesh) continue;
@@ -103,9 +105,14 @@ export default function Home() {
               current = childMesh;
             } else {
               let next: any;
-              if (child.operation === 'Subtract') {
+              let op = child.operation;
+              if (node.type === 'Subtract') op = 'Subtract';
+              if (node.type === 'Intersect') op = 'Intersect';
+              if (node.type === 'Union') op = 'Add';
+
+              if (op === 'Subtract') {
                 next = await difference(current, childMesh);
-              } else if (child.operation === 'Intersect') {
+              } else if (op === 'Intersect') {
                 next = await intersect(current, childMesh);
               } else {
                 next = await union(current, childMesh);

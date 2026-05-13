@@ -162,7 +162,9 @@ export default function Viewport({ geometry, simMode = false, selectedNode, onUp
       ghostMeshRef.current = null;
     }
 
-    if (selectedNode && selectedNode.type !== 'Group') {
+    const isContainer = (type: string) => ['Group', 'Union', 'Subtract', 'Intersect'].includes(type);
+
+    if (selectedNode && !isContainer(selectedNode.type)) {
       const { position, rotation, scale } = selectedNode.transform;
       
       let geo;
