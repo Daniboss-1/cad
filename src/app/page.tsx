@@ -9,12 +9,12 @@ import {
   createCylinder, 
   createTorus, 
   extrude,
-  union, 
-  difference,
-  intersect,
-  translate,
-  rotate,
-  scale,
+  unionMesh, 
+  subtractMesh,
+  intersectMesh,
+  translateMesh,
+  rotateMesh,
+  scaleMesh,
   getMeshData, 
   MeshData 
 } from '@/lib/cad';
@@ -111,14 +111,16 @@ export default function Home() {
               if (node.type === 'Union') op = 'Add';
 
               if (op === 'Subtract') {
-                next = await difference(current, childMesh);
+                next = await subtractMesh(current, childMesh);
               } else if (op === 'Intersect') {
-                next = await intersect(current, childMesh);
+                next = await intersectMesh(current, childMesh);
               } else {
-                next = await union(current, childMesh);
+                next = await unionMesh(current, childMesh);
               }
-              if (next !== current && current.delete) current.delete();
-              if (next !== childMesh && childMesh.delete) childMesh.delete();
+              
+              // Clean up intermediate meshes
+              if (current && typeof current.delete === 'function') current.delete();
+              if (childMesh && typeof childMesh.delete === 'function') childMesh.delete();
               current = next;
             }
           }
@@ -145,25 +147,25 @@ export default function Home() {
         if (current) {
           const { position, rotation, scale: scaleFactors } = node.transform;
           if (scaleFactors.some(s => s !== 1)) {
-            const next = await scale(current, scaleFactors);
-            if (next !== current && current.delete) current.delete();
+            const next = await scaleMesh(current, scaleFactors);
+            if (current && typeof current.delete === 'function') current.delete();
             current = next;
           }
           if (rotation.some(r => r !== 0)) {
-            const next = await rotate(current, rotation);
-            if (next !== current && current.delete) current.delete();
+            const next = await rotateMesh(current, rotation);
+            if (current && typeof current.delete === 'function') current.delete();
             current = next;
           }
           if (position.some(p => p !== 0)) {
-            const next = await translate(current, position);
-            if (next !== current && current.delete) current.delete();
+            const next = await translateMesh(current, position);
+            if (current && typeof current.delete === 'function') current.delete();
             current = next;
           }
         }
         return current;
       } catch (err) {
         console.error(`Error building node ${node.id}:`, err);
-        if (current && current.delete) current.delete();
+        if (current && typeof current.delete === 'function') current.delete();
         return null;
       }
     };
@@ -178,14 +180,15 @@ export default function Home() {
         } else {
           let next: any;
           if (node.operation === 'Subtract') {
-            next = await difference(finalResult, nodeMesh);
+            next = await subtractMesh(finalResult, nodeMesh);
           } else if (node.operation === 'Intersect') {
-            next = await intersect(finalResult, nodeMesh);
+            next = await intersectMesh(finalResult, nodeMesh);
           } else {
-            next = await union(finalResult, nodeMesh);
+            next = await unionMesh(finalResult, nodeMesh);
           }
-          if (next !== finalResult && finalResult.delete) finalResult.delete();
-          if (next !== nodeMesh && nodeMesh.delete) nodeMesh.delete();
+          
+          if (finalResult && typeof finalResult.delete === 'function') finalResult.delete();
+          if (nodeMesh && typeof nodeMesh.delete === 'function') nodeMesh.delete();
           finalResult = next;
         }
       }
